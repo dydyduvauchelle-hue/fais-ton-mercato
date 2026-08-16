@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Fais ton Mercato — OM</title>
+<title>Fais ton Mercato</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" />
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -25,50 +25,53 @@ const Icon = ({ children, size = 14 }) => (
 
 /* ------------------------------------------------------------------ */
 const CLUBS = [
-  { id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545", active: true, star: true },
-  { id: "psg", name: "Paris Saint-Germain", code: "PSG", c1: "#041E42", c2: "#DA291C", active: false },
-  { id: "asm", name: "AS Monaco", code: "ASM", c1: "#E2001A", c2: "#FFFFFF", active: false },
-  { id: "ol", name: "Olympique Lyonnais", code: "OL", c1: "#1C2C5B", c2: "#DA1A32", active: false },
-  { id: "losc", name: "LOSC Lille", code: "LOSC", c1: "#C8102E", c2: "#003DA5", active: false },
-  { id: "ogcn", name: "OGC Nice", code: "OGCN", c1: "#000000", c2: "#E2001A", active: false },
-  { id: "rcl", name: "RC Lens", code: "RCL", c1: "#C8102E", c2: "#FFCC00", active: false },
-  { id: "srfc", name: "Stade Rennais", code: "SRFC", c1: "#E2001A", c2: "#000000", active: false },
-  { id: "rcsa", name: "RC Strasbourg", code: "RCSA", c1: "#0072CE", c2: "#FFFFFF", active: false },
-  { id: "tfc", name: "Toulouse FC", code: "TFC", c1: "#6A0DAD", c2: "#FFFFFF", active: false },
-  { id: "fcl", name: "FC Lorient", code: "FCL", c1: "#FF6600", c2: "#000000", active: false },
-  { id: "sb29", name: "Stade Brestois", code: "SB29", c1: "#D3232B", c2: "#FFFFFF", active: false },
-  { id: "aja", name: "AJ Auxerre", code: "AJA", c1: "#1C2C5B", c2: "#FFFFFF", active: false },
-  { id: "sco", name: "Angers SCO", code: "SCO", c1: "#000000", c2: "#FFFFFF", active: false },
-  { id: "hac", name: "Le Havre AC", code: "HAC", c1: "#0072CE", c2: "#FFFFFF", active: false },
-  { id: "lmfc", name: "Le Mans FC", code: "LMFC", c1: "#0033A0", c2: "#FFFFFF", active: false },
-  { id: "pfc", name: "Paris FC", code: "PFC", c1: "#003DA5", c2: "#C8102E", active: false },
-  { id: "estac", name: "ESTAC Troyes", code: "ESTAC", c1: "#003DA5", c2: "#FFFFFF", active: false },
+  { id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545", active: true, star: true, league: "Ligue 1", apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55 },
+  { id: "usbco", name: "US Boulogne Côte d'Opale", code: "USBCO", c1: "#C8102E", c2: "#000000", active: true, league: "Ligue 2", apiQuery: "Boulogne", coach: "Fabien Dagneaux", salaryCap: 8 },
+  { id: "psg", name: "Paris Saint-Germain", code: "PSG", c1: "#041E42", c2: "#DA291C", active: false, league: "Ligue 1" },
+  { id: "asm", name: "AS Monaco", code: "ASM", c1: "#E2001A", c2: "#FFFFFF", active: false, league: "Ligue 1" },
+  { id: "ol", name: "Olympique Lyonnais", code: "OL", c1: "#1C2C5B", c2: "#DA1A32", active: false, league: "Ligue 1" },
+  { id: "losc", name: "LOSC Lille", code: "LOSC", c1: "#C8102E", c2: "#003DA5", active: false, league: "Ligue 1" },
+  { id: "ogcn", name: "OGC Nice", code: "OGCN", c1: "#000000", c2: "#E2001A", active: false, league: "Ligue 1" },
+  { id: "rcl", name: "RC Lens", code: "RCL", c1: "#C8102E", c2: "#FFCC00", active: false, league: "Ligue 1" },
+  { id: "srfc", name: "Stade Rennais", code: "SRFC", c1: "#E2001A", c2: "#000000", active: false, league: "Ligue 1" },
+  { id: "rcsa", name: "RC Strasbourg", code: "RCSA", c1: "#0072CE", c2: "#FFFFFF", active: false, league: "Ligue 1" },
+  { id: "tfc", name: "Toulouse FC", code: "TFC", c1: "#6A0DAD", c2: "#FFFFFF", active: false, league: "Ligue 1" },
+  { id: "fcl", name: "FC Lorient", code: "FCL", c1: "#FF6600", c2: "#000000", active: false, league: "Ligue 1" },
+  { id: "sb29", name: "Stade Brestois", code: "SB29", c1: "#D3232B", c2: "#FFFFFF", active: false, league: "Ligue 1" },
+  { id: "aja", name: "AJ Auxerre", code: "AJA", c1: "#1C2C5B", c2: "#FFFFFF", active: false, league: "Ligue 1" },
+  { id: "sco", name: "Angers SCO", code: "SCO", c1: "#000000", c2: "#FFFFFF", active: false, league: "Ligue 1" },
+  { id: "hac", name: "Le Havre AC", code: "HAC", c1: "#0072CE", c2: "#FFFFFF", active: false, league: "Ligue 1" },
+  { id: "lmfc", name: "Le Mans FC", code: "LMFC", c1: "#0033A0", c2: "#FFFFFF", active: false, league: "Ligue 1" },
+  { id: "pfc", name: "Paris FC", code: "PFC", c1: "#003DA5", c2: "#C8102E", active: false, league: "Ligue 1" },
+  { id: "estac", name: "ESTAC Troyes", code: "ESTAC", c1: "#003DA5", c2: "#FFFFFF", active: false, league: "Ligue 1" },
 ];
 
-const FALLBACK_SQUAD = [
-  { id: "gk1", name: "Jeffrey de Lange", num: 30, cat: "GK", pos: "Gardien", age: 28, value: 4 },
-  { id: "gk2", name: "Gerónimo Rulli", num: 1, cat: "GK", pos: "Gardien", age: 34, value: 6, saleTag: true },
-  { id: "d1", name: "Amir Murillo", num: 2, cat: "DEF", pos: "Arrière droit", age: 29, value: 18 },
-  { id: "d2", name: "Derek Cornelius", num: 4, cat: "DEF", pos: "Défenseur central", age: 26, value: 7 },
-  { id: "d3", name: "Ulisses Garcia", num: 3, cat: "DEF", pos: "Arrière gauche", age: 29, value: 5 },
-  { id: "d4", name: "Pol Lirola", num: 15, cat: "DEF", pos: "Arrière droit", age: 28, value: 4 },
-  { id: "d5", name: "Leonardo Balerdi", num: 5, cat: "DEF", pos: "Défenseur central", age: 27, value: 18, saleTag: true },
-  { id: "d6", name: "Bamo Meïté", num: 32, cat: "DEF", pos: "Défenseur central", age: 20, value: 4 },
-  { id: "m1", name: "Adrien Rabiot", num: 25, cat: "MID", pos: "Milieu central", age: 31, value: 10 },
-  { id: "m2", name: "Matt O'Riley", num: 6, cat: "MID", pos: "Milieu offensif", age: 25, value: 28 },
-  { id: "m3", name: "Angel Gomes", num: 7, cat: "MID", pos: "Milieu offensif", age: 25, value: 20 },
-  { id: "m4", name: "Pierre-Emile Højbjerg", num: 8, cat: "MID", pos: "Milieu défensif", age: 30, value: 12, saleTag: true },
-  { id: "m5", name: "Darryl Bakola", num: 28, cat: "MID", pos: "Milieu central", age: 18, value: 7 },
-  { id: "m6", name: "Ismaël Koné", num: 22, cat: "MID", pos: "Milieu central", age: 24, value: 13 },
-  { id: "m7", name: "Quinten Timber", num: 26, cat: "MID", pos: "Milieu central", age: 24, value: 18, saleTag: true },
-  { id: "f1", name: "Jonathan Rowe", num: 23, cat: "FWD", pos: "Ailier", age: 22, value: 22 },
-  { id: "f2", name: "Amine Harit", num: 9, cat: "FWD", pos: "Milieu offensif", age: 28, value: 12 },
-  { id: "f3", name: "Robinio Vaz", num: 45, cat: "FWD", pos: "Attaquant", age: 20, value: 8 },
-  { id: "f4", name: "Kaïro Abdallah", num: 34, cat: "FWD", pos: "Attaquant", age: 18, value: 4 },
-  { id: "f5", name: "Igor Paixão", num: 10, cat: "FWD", pos: "Ailier", age: 25, value: 32 },
-  { id: "f6", name: "Timothy Weah", num: 21, cat: "FWD", pos: "Ailier", age: 26, value: 14, saleTag: true },
-  { id: "f7", name: "Faris Moumbagna", num: 29, cat: "FWD", pos: "Attaquant", age: 25, value: 10 },
-].map((p) => ({ ...p, onLoan: false, loanOA: false, loanedIn: false }));
+const FALLBACK_SQUADS = {
+  om: [
+    { id: "gk1", name: "Jeffrey de Lange", num: 30, cat: "GK", pos: "Gardien", age: 28, value: 4 },
+    { id: "gk2", name: "Gerónimo Rulli", num: 1, cat: "GK", pos: "Gardien", age: 34, value: 6, saleTag: true },
+    { id: "d1", name: "Amir Murillo", num: 2, cat: "DEF", pos: "Arrière droit", age: 29, value: 18 },
+    { id: "d2", name: "Derek Cornelius", num: 4, cat: "DEF", pos: "Défenseur central", age: 26, value: 7 },
+    { id: "d3", name: "Ulisses Garcia", num: 3, cat: "DEF", pos: "Arrière gauche", age: 29, value: 5 },
+    { id: "d4", name: "Pol Lirola", num: 15, cat: "DEF", pos: "Arrière droit", age: 28, value: 4 },
+    { id: "d5", name: "Leonardo Balerdi", num: 5, cat: "DEF", pos: "Défenseur central", age: 27, value: 18, saleTag: true },
+    { id: "d6", name: "Bamo Meïté", num: 32, cat: "DEF", pos: "Défenseur central", age: 20, value: 4 },
+    { id: "m1", name: "Adrien Rabiot", num: 25, cat: "MID", pos: "Milieu central", age: 31, value: 10 },
+    { id: "m2", name: "Matt O'Riley", num: 6, cat: "MID", pos: "Milieu offensif", age: 25, value: 28 },
+    { id: "m3", name: "Angel Gomes", num: 7, cat: "MID", pos: "Milieu offensif", age: 25, value: 20 },
+    { id: "m4", name: "Pierre-Emile Højbjerg", num: 8, cat: "MID", pos: "Milieu défensif", age: 30, value: 12, saleTag: true },
+    { id: "m5", name: "Darryl Bakola", num: 28, cat: "MID", pos: "Milieu central", age: 18, value: 7 },
+    { id: "m6", name: "Ismaël Koné", num: 22, cat: "MID", pos: "Milieu central", age: 24, value: 13 },
+    { id: "m7", name: "Quinten Timber", num: 26, cat: "MID", pos: "Milieu central", age: 24, value: 18, saleTag: true },
+    { id: "f1", name: "Jonathan Rowe", num: 23, cat: "FWD", pos: "Ailier", age: 22, value: 22 },
+    { id: "f2", name: "Amine Harit", num: 9, cat: "FWD", pos: "Milieu offensif", age: 28, value: 12 },
+    { id: "f3", name: "Robinio Vaz", num: 45, cat: "FWD", pos: "Attaquant", age: 20, value: 8 },
+    { id: "f4", name: "Kaïro Abdallah", num: 34, cat: "FWD", pos: "Attaquant", age: 18, value: 4 },
+    { id: "f5", name: "Igor Paixão", num: 10, cat: "FWD", pos: "Ailier", age: 25, value: 32 },
+    { id: "f6", name: "Timothy Weah", num: 21, cat: "FWD", pos: "Ailier", age: 26, value: 14, saleTag: true },
+    { id: "f7", name: "Faris Moumbagna", num: 29, cat: "FWD", pos: "Attaquant", age: 25, value: 10 },
+  ],
+};
 
 const MARKET_POOL = [
   { id: "buy1", name: "Guillaume Restes", cat: "GK", pos: "Gardien", age: 21, value: 25 },
@@ -84,6 +87,7 @@ const POS_MAP = { Goalkeeper: "GK", Defender: "DEF", Midfielder: "MID", Attacker
 const BENCH_SIZE = 9;
 const SQUAD_VALUE_CAP = 230;
 const START_TRANSFER_BUDGET = 10;
+const DNCG_TARGET = 80;
 
 const FORMATIONS = {
   "4-3-3": [
@@ -128,8 +132,8 @@ function assignSlots(squad, formationKey) {
 function shortName(name) { const parts = name.split(" "); return parts.length > 1 ? parts[parts.length - 1] : name; }
 function fmtValue(v) { return v == null ? "n.c." : `${v}M€`; }
 
-// L'API ne fournit pas de valeur marchande officielle : on l'estime nous-même
-// à partir de l'âge et du poste (pas une donnée réelle, juste indicative).
+// Ni la valeur marchande ni le salaire ne sont fournis par l'API : estimations
+// indicatives à partir de l'âge et du poste, jamais des données officielles.
 function estimateValue(age, cat, num) {
   const base = { GK: 8, DEF: 12, MID: 15, FWD: 18 }[cat] || 10;
   let ageMult;
@@ -142,6 +146,10 @@ function estimateValue(age, cat, num) {
   else ageMult = 0.3;
   const jitter = 0.85 + ((num || 0) % 10) * 0.03;
   return Math.max(1, Math.round(base * ageMult * jitter));
+}
+function estimateWage(value) {
+  if (value == null) return null;
+  return Math.max(0.3, Math.round(value * 0.18 * 10) / 10);
 }
 
 function ClubCrest({ club, size = 40, logoUrl }) {
@@ -168,26 +176,35 @@ function Jersey({ club, num, empty }) {
 }
 
 function FaisTonMercato() {
-  const club = CLUBS[0];
+  const [selectedClub, setSelectedClub] = useState("om");
+  const club = CLUBS.find((c) => c.id === selectedClub);
   const [view, setView] = useState("home");
-  const [squad, setSquad] = useState(FALLBACK_SQUAD);
+  const [squad, setSquad] = useState(FALLBACK_SQUADS.om);
   const [marketPool, setMarketPool] = useState(MARKET_POOL);
   const [transferBudget, setTransferBudget] = useState(START_TRANSFER_BUDGET);
+  const [dncgSold, setDncgSold] = useState(0);
   const [formation, setFormation] = useState("4-3-3");
-  const [assignment, setAssignment] = useState(() => assignSlots(FALLBACK_SQUAD, "4-3-3"));
+  const [assignment, setAssignment] = useState(() => assignSlots(FALLBACK_SQUADS.om, "4-3-3"));
   const [selected, setSelected] = useState(null);
   const [flash, setFlash] = useState("");
   const [marketSearch, setMarketSearch] = useState("");
-  const [customForm, setCustomForm] = useState({ name: "", cat: "MID", age: 24, value: 10 });
+  const [customForm, setCustomForm] = useState({ name: "", cat: "MID", age: 24, value: 10, num: "", photo: null });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
   const [dataSource, setDataSource] = useState("loading");
-  const [liveLogo, setLiveLogo] = useState(null);
+  const [logosCache, setLogosCache] = useState({});
   const [liveError, setLiveError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
+    setDataSource("loading");
+    setSquad(FALLBACK_SQUADS[selectedClub] || []);
+    setTransferBudget(START_TRANSFER_BUDGET);
+    setDncgSold(0);
     async function loadLive() {
       try {
-        const r = await fetch("/api/squad");
+        const r = await fetch(`/api/squad?team=${encodeURIComponent(club.apiQuery)}`);
         const data = await r.json();
         if (data.error) throw new Error(data.error);
         const team = data.team;
@@ -195,20 +212,22 @@ function FaisTonMercato() {
         if (!team || players.length === 0) throw new Error("Réponse vide");
         const mapped = players.map((p) => {
           const cat = POS_MAP[p.position] || "MID";
-          return {
-            id: `live-${p.id}`, name: p.name, num: p.number || 0, cat,
-            pos: p.position || "", age: p.age || null, value: estimateValue(p.age, cat, p.number), valueEstimated: true, photo: p.photo || null,
-            onLoan: false, loanOA: false, loanedIn: false,
-          };
+          return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
+            age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
+            onLoan: false, loanOA: false, loanedIn: false };
         });
-        if (!cancelled) { setSquad(mapped); setLiveLogo(team.logo || null); setDataSource("live"); }
+        if (!cancelled) {
+          setSquad(mapped);
+          setLogosCache((prev) => ({ ...prev, [selectedClub]: team.logo || null }));
+          setDataSource("live");
+        }
       } catch (err) {
         if (!cancelled) { setLiveError(err.message || "Erreur inconnue"); setDataSource("demo"); }
       }
     }
     loadLive();
     return () => { cancelled = true; };
-  }, []);
+  }, [selectedClub]);
 
   useEffect(() => { setAssignment(assignSlots(squad, formation)); setSelected(null); }, [formation, squad]);
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(""), 2400); return () => clearTimeout(t); }, [flash]);
@@ -233,6 +252,7 @@ function FaisTonMercato() {
     const squadForBudget = [...filled.map((s) => s.player), ...bench];
     const hasValues = squadForBudget.some((p) => p.value != null && p.value > 0);
     const used = squadForBudget.reduce((s, p) => s + (p.value || 0), 0);
+    const wageBill = Math.round(squadForBudget.reduce((s, p) => s + (estimateWage(p.value) || 0), 0) * 10) / 10;
     const ratio = used / SQUAD_VALUE_CAP;
     const budgetScore = ratio <= 1 ? 10 + 15 * ratio : Math.max(0, 25 - (ratio - 1) * 100);
     const withAge = filled.filter((s) => s.player.age);
@@ -243,7 +263,8 @@ function FaisTonMercato() {
     const coherence = ageScore + (benchCatCount / 4) * 10;
     const avgValue = filled.reduce((s, x) => s + (x.player.value || 0), 0) / (filled.length || 1);
     const quality = Math.min(25, (avgValue / 45) * 25);
-    return { coverage, budgetScore, coherence, quality, hasValues, total: coverage + coherence + (hasValues ? budgetScore + quality : 0), partial: !hasValues, used, avgAge: withAge.length ? avgAge : null };
+    return { coverage, budgetScore, coherence, quality, hasValues, wageBill,
+      total: coverage + coherence + (hasValues ? budgetScore + quality : 0), partial: !hasValues, used, avgAge: withAge.length ? avgAge : null };
   }, [starters, bench, slots.length]);
 
   const buyPlayer = (p) => {
@@ -256,6 +277,7 @@ function FaisTonMercato() {
   const sellPlayer = (p) => {
     const fee = p.value != null ? Math.round(p.value * 0.9 * 10) / 10 : 0;
     setTransferBudget((b) => Math.round((b + fee) * 10) / 10);
+    if (selectedClub === "om") setDncgSold((d) => Math.round((d + fee) * 10) / 10);
     setSquad((s) => s.filter((x) => x.id !== p.id));
     setFlash(`${p.name} vendu${fee ? ` pour ${fee}M€` : ""}.`);
   };
@@ -273,16 +295,44 @@ function FaisTonMercato() {
   };
   const addCustomPlayer = (mode) => {
     if (!customForm.name.trim()) return;
-    const base = { id: `custom-${Date.now()}`, name: customForm.name.trim(), cat: customForm.cat, pos: CAT_LABEL[customForm.cat], age: Number(customForm.age) || 20, value: Number(customForm.value) || 1 };
+    const base = { id: `custom-${Date.now()}`, name: customForm.name.trim(), cat: customForm.cat, pos: CAT_LABEL[customForm.cat],
+      age: Number(customForm.age) || 20, value: Number(customForm.value) || 1, photo: customForm.photo || null };
     if (mode === "achat") { setMarketPool((m) => [...m, base]); setFlash(`${base.name} ajouté aux pistes du marché.`); }
     else {
       const fee = Math.max(1, Math.round(base.value * 0.15 * 10) / 10);
       if (transferBudget < fee) { setFlash("Budget insuffisant pour ce prêt."); return; }
       setTransferBudget((b) => Math.round((b - fee) * 10) / 10);
-      setSquad((s) => [...s, { ...base, num: 99, onLoan: false, loanOA: false, loanedIn: true }]);
+      setSquad((s) => [...s, { ...base, num: Number(customForm.num) || 99, onLoan: false, loanOA: false, loanedIn: true }]);
       setFlash(`${base.name} arrive en prêt (indemnité ${fee}M€).`);
     }
-    setCustomForm({ name: "", cat: "MID", age: 24, value: 10 });
+    setCustomForm({ name: "", cat: "MID", age: 24, value: 10, num: "", photo: null });
+    setSearchResults([]);
+  };
+
+  const searchPlayer = async () => {
+    if (searchQuery.trim().length < 3) { setFlash("Tape au moins 3 lettres."); return; }
+    setSearching(true);
+    setSearchResults([]);
+    try {
+      const r = await fetch(`/api/search-player?q=${encodeURIComponent(searchQuery.trim())}`);
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      setSearchResults(data.results || []);
+      if (!data.results || data.results.length === 0) setFlash("Aucune correspondance trouvée dans l'API.");
+    } catch (err) {
+      setFlash(`Recherche échouée : ${err.message}`);
+    } finally {
+      setSearching(false);
+    }
+  };
+  const pickSearchResult = (r) => {
+    setCustomForm({
+      name: r.name, cat: POS_MAP[r.position] || "MID", age: r.age || 20,
+      value: estimateValue(r.age, POS_MAP[r.position] || "MID", r.number || 0),
+      num: r.number || "", photo: r.photo || null,
+    });
+    setSearchResults([]);
+    setFlash(`${r.name} — infos remplies automatiquement, vérifie et complète si besoin.`);
   };
 
   const Chip = ({ player, slot, size = "md" }) => {
@@ -305,6 +355,7 @@ function FaisTonMercato() {
   );
 
   const filteredMarket = marketPool.filter((p) => p.name.toLowerCase().includes(marketSearch.toLowerCase()));
+  const dncgDone = dncgSold >= DNCG_TARGET;
 
   return (
     <div className="ft-root">
@@ -317,20 +368,20 @@ function FaisTonMercato() {
       <div className="ft-body">
         {dataSource === "loading" && <div className="ft-status loading"><Icon>📶</Icon> Connexion à API-Football…</div>}
         {dataSource === "live" && <div className="ft-status live"><Icon>📶</Icon> Données en direct via API-Football</div>}
-        {dataSource === "demo" && <div className="ft-status demo"><Icon>🚫</Icon> Appel échoué ({liveError}) — mode démo hors-ligne.</div>}
+        {dataSource === "demo" && <div className="ft-status demo"><Icon>🚫</Icon> Appel échoué ({liveError}) — {FALLBACK_SQUADS[selectedClub] ? "mode démo hors-ligne." : "aucun repli disponible pour ce club, réessaie ou ajoute des joueurs toi-même."}</div>}
 
         {view === "home" && (<>
           <div className="ft-hero">
-            <ClubCrest club={club} size={54} logoUrl={liveLogo} />
+            <ClubCrest club={club} size={54} logoUrl={logosCache[selectedClub]} />
             <h1>Fais ton Mercato</h1>
-            <p>Ligue 1 2026-2027 · choisis un club et prends les commandes de son effectif</p>
+            <p>Ligue 1 & Ligue 2 2026-2027 · choisis un club et prends les commandes de son effectif</p>
           </div>
           <div className="ft-grid">
             {CLUBS.map((c) => (
-              <button key={c.id} className="ft-club-card" disabled={!c.active} onClick={() => c.active && setView("squad")}>
-                <ClubCrest club={c} size={40} logoUrl={c.id === "om" ? liveLogo : null} />
+              <button key={c.id} className="ft-club-card" disabled={!c.active} onClick={() => { if (c.active) { setSelectedClub(c.id); setView("squad"); } }}>
+                <ClubCrest club={c} size={40} logoUrl={logosCache[c.id]} />
                 <span className="ft-club-name">{c.name}</span>
-                {!c.active && <span className="ft-soon">bientôt</span>}
+                <span className="ft-soon">{c.active ? c.league : "bientôt"}</span>
               </button>
             ))}
           </div>
@@ -338,8 +389,8 @@ function FaisTonMercato() {
 
         {view === "squad" && (<>
           <div className="ft-head">
-            <ClubCrest club={club} size={44} logoUrl={liveLogo} />
-            <div><div className="ft-club">Olympique de Marseille</div><div className="ft-coach">Entraîneur : Bruno Genesio</div></div>
+            <ClubCrest club={club} size={44} logoUrl={logosCache[selectedClub]} />
+            <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach}</div></div>
             <div className="ft-formations">
               {Object.keys(FORMATIONS).map((f) => (
                 <button key={f} className={`ft-fbtn ${f === formation ? "ft-fbtn-active" : ""}`} onClick={() => setFormation(f)}>{f}</button>
@@ -351,6 +402,12 @@ function FaisTonMercato() {
             <div className="ft-budget-track"><div className={`ft-budget-fill ${score.used > SQUAD_VALUE_CAP ? "ft-over" : ""}`} style={{ width: `${Math.min(100, (score.used / SQUAD_VALUE_CAP) * 100)}%` }} /></div>
             <div className="ft-budget-label">{score.hasValues ? `${score.used}M€ / ${SQUAD_VALUE_CAP}M€` : "valeur non fournie par l'API"}</div>
           </div>
+          <div className="ft-budget">
+            <Icon>🧾</Icon>
+            <div className="ft-budget-track"><div className={`ft-budget-fill ${score.wageBill > club.salaryCap ? "ft-over" : ""}`} style={{ width: `${Math.min(100, (score.wageBill / club.salaryCap) * 100)}%` }} /></div>
+            <div className="ft-budget-label">{score.wageBill}M€/an · plafond {club.salaryCap}M€ (masse salariale estimée)</div>
+          </div>
+
           <div className="ft-pitch">
             {starters.map(({ slot, player }) => (
               <div key={slot.id} style={{ position: "absolute", top: `${slot.top}%`, left: `${slot.left}%` }}><Chip player={player} slot={slot} /></div>
@@ -380,10 +437,20 @@ function FaisTonMercato() {
         </>)}
 
         {view === "market" && (<>
-          <div className="ft-dncg"><Icon>⚠️</Icon> Contrainte DNCG : budget recrutement quasi nul cet été (donnée saisie à la main).</div>
+          {selectedClub === "om" && (
+            <div className={`ft-dncg ${dncgDone ? "ft-dncg-done" : ""}`}>
+              <Icon>{dncgDone ? "✅" : "⚠️"}</Icon>
+              <div style={{ flex: 1 }}>
+                {dncgDone ? "Objectif DNCG atteint — l'OM a cédé assez de joueurs, la pression financière retombe." : `Contrainte DNCG : céder ${DNCG_TARGET}M€ de joueurs. Progression : ${dncgSold}M€ / ${DNCG_TARGET}M€.`}
+                <div className="ft-dncg-track"><div className="ft-dncg-fill" style={{ width: `${Math.min(100, (dncgSold / DNCG_TARGET) * 100)}%` }} /></div>
+              </div>
+            </div>
+          )}
+
           <div className="ft-market-budget"><Icon>💰</Icon> Budget mercato disponible<b>{transferBudget}M€</b></div>
-          <div className="ft-section-label"><span>Pistes du mercato</span></div>
-          <div className="ft-search"><Icon>🔍</Icon><input placeholder="Rechercher un joueur…" value={marketSearch} onChange={(e) => setMarketSearch(e.target.value)} /></div>
+
+          <div className="ft-section-label"><span>Pistes du mercato (sélection manuelle)</span></div>
+          <div className="ft-search"><Icon>🔍</Icon><input placeholder="Filtrer la liste…" value={marketSearch} onChange={(e) => setMarketSearch(e.target.value)} /></div>
           {filteredMarket.map((p) => (
             <div key={p.id} className="ft-row">
               <div className="ft-row-num">{p.cat}</div>
@@ -391,9 +458,25 @@ function FaisTonMercato() {
               <div className="ft-row-actions"><button className="ft-mini-btn ft-buy" disabled={transferBudget < p.value} onClick={() => buyPlayer(p)}>Acheter · {fmtValue(p.value)}</button></div>
             </div>
           ))}
-          {filteredMarket.length === 0 && <div className="ft-row-sub">Aucun joueur trouvé — ajoute-le toi-même ci-dessous.</div>}
+
           <div className="ft-custom">
-            <div className="ft-custom-title"><Icon>➕</Icon> Pas dans la liste ? Ajoute-le</div>
+            <div className="ft-custom-title"><Icon>🔎</Icon> Chercher un vrai joueur (via API-Football)</div>
+            <div className="ft-search" style={{ marginBottom: 8 }}>
+              <input placeholder="Ex. Kilian Sildillia" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchPlayer()} />
+              <button className="ft-mini-btn ft-buy" onClick={searchPlayer} disabled={searching}>{searching ? "…" : "Chercher"}</button>
+            </div>
+            {searchResults.length > 0 && (
+              <div className="ft-search-results">
+                {searchResults.map((r) => (
+                  <div key={r.id} className="ft-search-result" onClick={() => pickSearchResult(r)}>
+                    {r.photo ? <img className="ft-row-photo" src={r.photo} alt="" /> : <div className="ft-row-num">{POS_MAP[r.position] || "?"}</div>}
+                    <div><div className="ft-row-name">{r.name}</div><div className="ft-row-sub">{r.team || "club inconnu"} · {r.position || "poste inconnu"} · {r.age ? `${r.age} ans` : ""}</div></div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="ft-custom-title" style={{ marginTop: 12 }}><Icon>➕</Icon> Ou remplis à la main</div>
             <div className="ft-custom-grid">
               <input placeholder="Nom du joueur" value={customForm.name} onChange={(e) => setCustomForm((f) => ({ ...f, name: e.target.value }))} />
               <select value={customForm.cat} onChange={(e) => setCustomForm((f) => ({ ...f, cat: e.target.value }))}>
@@ -401,18 +484,21 @@ function FaisTonMercato() {
               </select>
               <input type="number" placeholder="Âge" value={customForm.age} onChange={(e) => setCustomForm((f) => ({ ...f, age: e.target.value }))} />
               <input type="number" placeholder="Valeur (M€)" value={customForm.value} onChange={(e) => setCustomForm((f) => ({ ...f, value: e.target.value }))} />
+              <input type="number" placeholder="Numéro (optionnel)" value={customForm.num} onChange={(e) => setCustomForm((f) => ({ ...f, num: e.target.value }))} />
             </div>
             <div className="ft-custom-actions">
               <button className="ft-mini-btn ft-buy" onClick={() => addCustomPlayer("achat")}>Ajouter comme piste d'achat</button>
               <button className="ft-mini-btn" onClick={() => addCustomPlayer("pret")}>Faire venir en prêt</button>
             </div>
           </div>
+
           <div className="ft-section-label"><span>Votre effectif</span></div>
           {squad.filter((p) => !p.onLoan).map((p) => (
             <div key={p.id} className="ft-row">
-              {p.photo ? <img className="ft-row-photo" src={p.photo} alt="" /> : <input className="ft-num-input" type="number" value={p.num} min={1} max={99} onChange={(e) => updateNumber(p.id, e.target.value)} />}
+              {p.photo && <img className="ft-row-photo" src={p.photo} alt="" />}
+              <input className="ft-num-input" type="number" value={p.num} min={1} max={99} onChange={(e) => updateNumber(p.id, e.target.value)} />
               <div>
-                <div className="ft-row-name">{p.name}{p.saleTag && <span className="ft-tag-sale">en instance de départ</span>}{p.loanedIn && <span className="ft-tag-loan">prêté à l'OM</span>}</div>
+                <div className="ft-row-name">{p.name}{p.saleTag && <span className="ft-tag-sale">en instance de départ</span>}{p.loanedIn && <span className="ft-tag-loan">prêté au club</span>}</div>
                 <div className="ft-row-sub">{p.pos} · {p.age ? `${p.age} ans` : "âge n.c."} · {fmtValue(p.value)}</div>
               </div>
               <div className="ft-row-actions">
@@ -422,6 +508,7 @@ function FaisTonMercato() {
               </div>
             </div>
           ))}
+
           {onLoanList.length > 0 && (<>
             <div className="ft-section-label"><span>Joueurs prêtés</span></div>
             {onLoanList.map((p) => (
@@ -434,7 +521,7 @@ function FaisTonMercato() {
           </>)}
         </>)}
 
-        <div className="ft-footnote"><Icon>ℹ️</Icon> {dataSource === "live" ? "Effectif et logo en direct depuis API-Football. Valeurs des joueurs estimées (âge + poste) — l'API ne fournit pas de valeur marchande officielle." : "Repli sur des données saisies à la main (16/08/2026)."}</div>
+        <div className="ft-footnote"><Icon>ℹ️</Icon> {dataSource === "live" ? "Effectif et logo en direct depuis API-Football. Valeurs et salaires estimés (âge/poste) — pas des données officielles." : "Repli sur des données saisies à la main."}</div>
       </div>
     </div>
   );
@@ -479,12 +566,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-fbtn { font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; background:var(--panel);
     border:1px solid var(--line); color:var(--muted); padding:6px 8px; border-radius:8px; cursor:pointer; }
   .ft-fbtn-active { background:var(--gold); color:var(--ink); border-color:var(--gold); }
-  .ft-budget { display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:11.5px; }
+  .ft-budget { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:11.5px; }
   .ft-budget-track { flex:1; height:8px; border-radius:5px; background:var(--panel); overflow:hidden; }
   .ft-budget-fill { height:100%; background:linear-gradient(90deg,var(--gold),#F2CE86); }
   .ft-budget-fill.ft-over { background:linear-gradient(90deg,var(--coral),#ff8a75); }
   .ft-budget-label { font-family:'IBM Plex Mono',monospace; color:var(--muted); white-space:nowrap; }
-  .ft-pitch { position:relative; width:100%; aspect-ratio:3/4.1; border-radius:14px; overflow:hidden;
+  .ft-pitch { position:relative; width:100%; aspect-ratio:3/4.1; border-radius:14px; overflow:hidden; margin-top:6px;
     background:repeating-linear-gradient(180deg, var(--pitch-a) 0 11%, var(--pitch-b) 11% 22%); border:1px solid var(--line); }
   .ft-pitch::before { content:''; position:absolute; inset:6%; border:1.5px solid rgba(244,247,241,0.35); border-radius:2px; }
   .ft-pitch::after { content:''; position:absolute; top:50%; left:50%; width:26%; aspect-ratio:1;
@@ -534,12 +621,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-bar-value { font-family:'IBM Plex Mono',monospace; width:36px; text-align:right; color:var(--muted); flex-shrink:0; }
   .ft-dncg { display:flex; gap:8px; align-items:flex-start; background:rgba(228,87,61,0.12); border:1px solid rgba(228,87,61,0.4);
     border-radius:12px; padding:10px 12px; margin-bottom:14px; font-size:11px; color:#f3b8ac; line-height:1.4; }
+  .ft-dncg-done { background:rgba(47,158,116,0.15); border-color:rgba(47,158,116,0.4); color:#9fe3c4; }
+  .ft-dncg-track { height:6px; border-radius:4px; background:rgba(244,247,241,0.12); overflow:hidden; margin-top:6px; }
+  .ft-dncg-fill { height:100%; background:var(--coral); border-radius:4px; }
+  .ft-dncg-done .ft-dncg-fill { background:var(--green); }
   .ft-market-budget { display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
     border-radius:12px; padding:12px 14px; margin-bottom:14px; }
   .ft-market-budget b { font-family:'Anton',sans-serif; font-size:18px; color:var(--gold); margin-left:auto; }
   .ft-search { display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
     border-radius:10px; padding:8px 10px; margin-bottom:10px; }
   .ft-search input { background:none; border:none; outline:none; color:var(--chalk); font-size:12px; width:100%; }
+  .ft-search-results { display:flex; flex-direction:column; gap:4px; margin-bottom:8px; }
+  .ft-search-result { display:flex; align-items:center; gap:10px; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:8px; padding:6px 8px; cursor:pointer; font-size:11px; }
   .ft-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:12px; }
   .ft-row:last-child { border-bottom:none; }
   .ft-row-num { width:22px; height:22px; border-radius:50%; background:#0B2545; color:#fff; display:flex; align-items:center;
