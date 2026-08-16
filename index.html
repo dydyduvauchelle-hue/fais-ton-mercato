@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fais ton Mercato — OM</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" />
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  body { margin:0; padding:24px 12px; background:#05080a; }
+  #root { display:flex; justify-content:center; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+
+const Icon = ({ children, size = 14 }) => (
+  <span style={{ fontSize: size, lineHeight: 1, display: "inline-flex" }}>{children}</span>
+);
+
+/* ------------------------------------------------------------------ */
+const CLUBS = [
+  { id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545", active: true, star: true },
+  { id: "psg", name: "Paris Saint-Germain", code: "PSG", c1: "#041E42", c2: "#DA291C", active: false },
+  { id: "asm", name: "AS Monaco", code: "ASM", c1: "#E2001A", c2: "#FFFFFF", active: false },
+  { id: "ol", name: "Olympique Lyonnais", code: "OL", c1: "#1C2C5B", c2: "#DA1A32", active: false },
+  { id: "losc", name: "LOSC Lille", code: "LOSC", c1: "#C8102E", c2: "#003DA5", active: false },
+  { id: "ogcn", name: "OGC Nice", code: "OGCN", c1: "#000000", c2: "#E2001A", active: false },
+  { id: "rcl", name: "RC Lens", code: "RCL", c1: "#C8102E", c2: "#FFCC00", active: false },
+  { id: "srfc", name: "Stade Rennais", code: "SRFC", c1: "#E2001A", c2: "#000000", active: false },
+  { id: "rcsa", name: "RC Strasbourg", code: "RCSA", c1: "#0072CE", c2: "#FFFFFF", active: false },
+  { id: "tfc", name: "Toulouse FC", code: "TFC", c1: "#6A0DAD", c2: "#FFFFFF", active: false },
+  { id: "fcl", name: "FC Lorient", code: "FCL", c1: "#FF6600", c2: "#000000", active: false },
+  { id: "sb29", name: "Stade Brestois", code: "SB29", c1: "#D3232B", c2: "#FFFFFF", active: false },
+  { id: "aja", name: "AJ Auxerre", code: "AJA", c1: "#1C2C5B", c2: "#FFFFFF", active: false },
+  { id: "sco", name: "Angers SCO", code: "SCO", c1: "#000000", c2: "#FFFFFF", active: false },
+  { id: "hac", name: "Le Havre AC", code: "HAC", c1: "#0072CE", c2: "#FFFFFF", active: false },
+  { id: "lmfc", name: "Le Mans FC", code: "LMFC", c1: "#0033A0", c2: "#FFFFFF", active: false },
+  { id: "pfc", name: "Paris FC", code: "PFC", c1: "#003DA5", c2: "#C8102E", active: false },
+  { id: "estac", name: "ESTAC Troyes", code: "ESTAC", c1: "#003DA5", c2: "#FFFFFF", active: false },
+];
+
+const FALLBACK_SQUAD = [
+  { id: "gk1", name: "Jeffrey de Lange", num: 30, cat: "GK", pos: "Gardien", age: 28, value: 4 },
+  { id: "gk2", name: "Gerónimo Rulli", num: 1, cat: "GK", pos: "Gardien", age: 34, value: 6, saleTag: true },
+  { id: "d1", name: "Amir Murillo", num: 2, cat: "DEF", pos: "Arrière droit", age: 29, value: 18 },
+  { id: "d2", name: "Derek Cornelius", num: 4, cat: "DEF", pos: "Défenseur central", age: 26, value: 7 },
+  { id: "d3", name: "Ulisses Garcia", num: 3, cat: "DEF", pos: "Arrière gauche", age: 29, value: 5 },
+  { id: "d4", name: "Pol Lirola", num: 15, cat: "DEF", pos: "Arrière droit", age: 28, value: 4 },
+  { id: "d5", name: "Leonardo Balerdi", num: 5, cat: "DEF", pos: "Défenseur central", age: 27, value: 18, saleTag: true },
+  { id: "d6", name: "Bamo Meïté", num: 32, cat: "DEF", pos: "Défenseur central", age: 20, value: 4 },
+  { id: "m1", name: "Adrien Rabiot", num: 25, cat: "MID", pos: "Milieu central", age: 31, value: 10 },
+  { id: "m2", name: "Matt O'Riley", num: 6, cat: "MID", pos: "Milieu offensif", age: 25, value: 28 },
+  { id: "m3", name: "Angel Gomes", num: 7, cat: "MID", pos: "Milieu offensif", age: 25, value: 20 },
+  { id: "m4", name: "Pierre-Emile Højbjerg", num: 8, cat: "MID", pos: "Milieu défensif", age: 30, value: 12, saleTag: true },
+  { id: "m5", name: "Darryl Bakola", num: 28, cat: "MID", pos: "Milieu central", age: 18, value: 7 },
+  { id: "m6", name: "Ismaël Koné", num: 22, cat: "MID", pos: "Milieu central", age: 24, value: 13 },
+  { id: "m7", name: "Quinten Timber", num: 26, cat: "MID", pos: "Milieu central", age: 24, value: 18, saleTag: true },
+  { id: "f1", name: "Jonathan Rowe", num: 23, cat: "FWD", pos: "Ailier", age: 22, value: 22 },
+  { id: "f2", name: "Amine Harit", num: 9, cat: "FWD", pos: "Milieu offensif", age: 28, value: 12 },
+  { id: "f3", name: "Robinio Vaz", num: 45, cat: "FWD", pos: "Attaquant", age: 20, value: 8 },
+  { id: "f4", name: "Kaïro Abdallah", num: 34, cat: "FWD", pos: "Attaquant", age: 18, value: 4 },
+  { id: "f5", name: "Igor Paixão", num: 10, cat: "FWD", pos: "Ailier", age: 25, value: 32 },
+  { id: "f6", name: "Timothy Weah", num: 21, cat: "FWD", pos: "Ailier", age: 26, value: 14, saleTag: true },
+  { id: "f7", name: "Faris Moumbagna", num: 29, cat: "FWD", pos: "Attaquant", age: 25, value: 10 },
+].map((p) => ({ ...p, onLoan: false, loanOA: false, loanedIn: false }));
+
+const MARKET_POOL = [
+  { id: "buy1", name: "Guillaume Restes", cat: "GK", pos: "Gardien", age: 21, value: 25 },
+  { id: "buy2", name: "Marcin Bulka", cat: "GK", pos: "Gardien", age: 26, value: 18 },
+  { id: "buy3", name: "Ramos Mingo", cat: "DEF", pos: "Défenseur central", age: 22, value: 10 },
+  { id: "buy4", name: "Ethan Nwaneri", cat: "MID", pos: "Milieu offensif", age: 19, value: 45 },
+  { id: "buy5", name: "Hamed Traoré", cat: "FWD", pos: "Ailier", age: 24, value: 12 },
+];
+
+const CAT_LABEL = { GK: "Gardien", DEF: "Défenseur", MID: "Milieu", FWD: "Attaquant" };
+const CAT_ORDER = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
+const POS_MAP = { Goalkeeper: "GK", Defender: "DEF", Midfielder: "MID", Attacker: "FWD" };
+const BENCH_SIZE = 9;
+const SQUAD_VALUE_CAP = 230;
+const START_TRANSFER_BUDGET = 10;
+
+const FORMATIONS = {
+  "4-3-3": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 72, left: 14 },
+    { id: "DCL", cat: "DEF", top: 77, left: 37 }, { id: "DCR", cat: "DEF", top: 77, left: 63 },
+    { id: "DR", cat: "DEF", top: 72, left: 86 }, { id: "MCL", cat: "MID", top: 51, left: 27 },
+    { id: "MC", cat: "MID", top: 55, left: 50 }, { id: "MCR", cat: "MID", top: 51, left: 73 },
+    { id: "FL", cat: "FWD", top: 21, left: 18 }, { id: "ST", cat: "FWD", top: 13, left: 50 },
+    { id: "FR", cat: "FWD", top: 21, left: 82 },
+  ],
+  "4-2-3-1": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 72, left: 14 },
+    { id: "DCL", cat: "DEF", top: 77, left: 37 }, { id: "DCR", cat: "DEF", top: 77, left: 63 },
+    { id: "DR", cat: "DEF", top: 72, left: 86 }, { id: "MDCL", cat: "MID", top: 59, left: 36 },
+    { id: "MDCR", cat: "MID", top: 59, left: 64 }, { id: "MOL", cat: "MID", top: 35, left: 18 },
+    { id: "MOC", cat: "MID", top: 31, left: 50 }, { id: "MOR", cat: "MID", top: 35, left: 82 },
+    { id: "ST", cat: "FWD", top: 13, left: 50 },
+  ],
+  "3-4-3": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DCL", cat: "DEF", top: 76, left: 25 },
+    { id: "DC", cat: "DEF", top: 80, left: 50 }, { id: "DCR", cat: "DEF", top: 76, left: 75 },
+    { id: "ML", cat: "MID", top: 53, left: 10 }, { id: "MCL", cat: "MID", top: 57, left: 37 },
+    { id: "MCR", cat: "MID", top: 57, left: 63 }, { id: "MR", cat: "MID", top: 53, left: 90 },
+    { id: "FL", cat: "FWD", top: 19, left: 20 }, { id: "ST", cat: "FWD", top: 11, left: 50 },
+    { id: "FR", cat: "FWD", top: 19, left: 80 },
+  ],
+};
+
+function assignSlots(squad, formationKey) {
+  const slots = FORMATIONS[formationKey];
+  const pool = squad.filter((p) => !p.onLoan);
+  const used = new Set();
+  const assignment = {};
+  slots.forEach((slot) => {
+    const candidate = pool.find((p) => p.cat === slot.cat && !used.has(p.id));
+    if (candidate) { assignment[candidate.id] = slot.id; used.add(candidate.id); }
+  });
+  const remaining = pool.filter((p) => !used.has(p.id));
+  remaining.forEach((p, i) => { assignment[p.id] = i < BENCH_SIZE ? "BENCH" : "RESERVE"; });
+  return assignment;
+}
+function shortName(name) { const parts = name.split(" "); return parts.length > 1 ? parts[parts.length - 1] : name; }
+function fmtValue(v) { return v == null ? "n.c." : `${v}M€`; }
+
+function ClubCrest({ club, size = 40, logoUrl }) {
+  if (logoUrl) return <img src={logoUrl} alt={club.code} width={size} height={size} style={{ objectFit: "contain", flexShrink: 0 }} />;
+  return (
+    <div className="ft-crest-wrap" style={{ width: size }}>
+      {club.star && <div className="ft-crest-star" style={{ fontSize: size * 0.16 }}>★</div>}
+      <div className="ft-crest" style={{ width: size, height: size * 1.12,
+        background: `linear-gradient(165deg, ${club.c1} 0%, ${club.c1} 52%, ${club.c2} 52%, ${club.c2} 100%)`, fontSize: size * 0.24 }}>{club.code}</div>
+    </div>
+  );
+}
+function Jersey({ club, num, empty }) {
+  return (
+    <span className={`ft-jersey ${empty ? "ft-jersey-empty" : ""}`}>
+      {!empty && (<>
+        <span className="ft-jersey-sleeve ft-jersey-sleeve-l" style={{ background: club.c1 }} />
+        <span className="ft-jersey-sleeve ft-jersey-sleeve-r" style={{ background: club.c1 }} />
+        <span className="ft-jersey-collar" style={{ background: club.c1 }} />
+      </>)}
+      <span className="ft-jersey-num" style={empty ? {} : { color: club.c2 }}>{empty ? "+" : num}</span>
+    </span>
+  );
+}
+
+function FaisTonMercato() {
+  const club = CLUBS[0];
+  const [view, setView] = useState("home");
+  const [squad, setSquad] = useState(FALLBACK_SQUAD);
+  const [marketPool, setMarketPool] = useState(MARKET_POOL);
+  const [transferBudget, setTransferBudget] = useState(START_TRANSFER_BUDGET);
+  const [formation, setFormation] = useState("4-3-3");
+  const [assignment, setAssignment] = useState(() => assignSlots(FALLBACK_SQUAD, "4-3-3"));
+  const [selected, setSelected] = useState(null);
+  const [flash, setFlash] = useState("");
+  const [marketSearch, setMarketSearch] = useState("");
+  const [customForm, setCustomForm] = useState({ name: "", cat: "MID", age: 24, value: 10 });
+  const [dataSource, setDataSource] = useState("loading");
+  const [liveLogo, setLiveLogo] = useState(null);
+  const [liveError, setLiveError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadLive() {
+      try {
+        const r = await fetch("/api/squad");
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        const team = data.team;
+        const players = data.players || [];
+        if (!team || players.length === 0) throw new Error("Réponse vide");
+        const mapped = players.map((p) => ({
+          id: `live-${p.id}`, name: p.name, num: p.number || 0, cat: POS_MAP[p.position] || "MID",
+          pos: p.position || "", age: p.age || null, value: null, photo: p.photo || null,
+          onLoan: false, loanOA: false, loanedIn: false,
+        }));
+        if (!cancelled) { setSquad(mapped); setLiveLogo(team.logo || null); setDataSource("live"); }
+      } catch (err) {
+        if (!cancelled) { setLiveError(err.message || "Erreur inconnue"); setDataSource("demo"); }
+      }
+    }
+    loadLive();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => { setAssignment(assignSlots(squad, formation)); setSelected(null); }, [formation, squad]);
+  useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(""), 2400); return () => clearTimeout(t); }, [flash]);
+
+  const slots = FORMATIONS[formation];
+  const handleSelect = (id) => {
+    if (!selected) return setSelected(id);
+    if (selected === id) return setSelected(null);
+    setAssignment((prev) => ({ ...prev, [selected]: prev[id], [id]: prev[selected] }));
+    setSelected(null);
+  };
+
+  const starters = useMemo(() => slots.map((slot) => ({ slot, player: squad.find((p) => assignment[p.id] === slot.id) || null })), [assignment, formation, squad]);
+  const bench = useMemo(() => squad.filter((p) => assignment[p.id] === "BENCH").sort((a, b) => CAT_ORDER[a.cat] - CAT_ORDER[b.cat]), [assignment, squad]);
+  const reserve = useMemo(() => squad.filter((p) => assignment[p.id] === "RESERVE").sort((a, b) => CAT_ORDER[a.cat] - CAT_ORDER[b.cat]), [assignment, squad]);
+  const onLoanList = useMemo(() => squad.filter((p) => p.onLoan), [squad]);
+
+  const score = useMemo(() => {
+    const filled = starters.filter((s) => s.player);
+    const matches = filled.filter((s) => s.player.cat === s.slot.cat).length;
+    const coverage = (matches / slots.length) * 25;
+    const squadForBudget = [...filled.map((s) => s.player), ...bench];
+    const hasValues = squadForBudget.some((p) => p.value != null && p.value > 0);
+    const used = squadForBudget.reduce((s, p) => s + (p.value || 0), 0);
+    const ratio = used / SQUAD_VALUE_CAP;
+    const budgetScore = ratio <= 1 ? 10 + 15 * ratio : Math.max(0, 25 - (ratio - 1) * 100);
+    const withAge = filled.filter((s) => s.player.age);
+    const avgAge = withAge.reduce((s, x) => s + x.player.age, 0) / (withAge.length || 1);
+    const ageScore = Math.max(0, Math.min(15, 15 - Math.max(0, Math.abs(avgAge - 25.5) - 2.5) * 3));
+    const cats = ["GK", "DEF", "MID", "FWD"];
+    const benchCatCount = cats.filter((c) => bench.some((p) => p.cat === c)).length;
+    const coherence = ageScore + (benchCatCount / 4) * 10;
+    const avgValue = filled.reduce((s, x) => s + (x.player.value || 0), 0) / (filled.length || 1);
+    const quality = Math.min(25, (avgValue / 45) * 25);
+    return { coverage, budgetScore, coherence, quality, hasValues, total: coverage + coherence + (hasValues ? budgetScore + quality : 0), partial: !hasValues, used, avgAge: withAge.length ? avgAge : null };
+  }, [starters, bench, slots.length]);
+
+  const buyPlayer = (p) => {
+    if (transferBudget < p.value) return;
+    setTransferBudget((b) => Math.round((b - p.value) * 10) / 10);
+    setSquad((s) => [...s, { ...p, onLoan: false, loanOA: false, loanedIn: false }]);
+    setMarketPool((m) => m.filter((x) => x.id !== p.id));
+    setFlash(`${p.name} rejoint l'effectif.`);
+  };
+  const sellPlayer = (p) => {
+    const fee = p.value != null ? Math.round(p.value * 0.9 * 10) / 10 : 0;
+    setTransferBudget((b) => Math.round((b + fee) * 10) / 10);
+    setSquad((s) => s.filter((x) => x.id !== p.id));
+    setFlash(`${p.name} vendu${fee ? ` pour ${fee}M€` : ""}.`);
+  };
+  const loanOutPlayer = (p, withOA) => {
+    setSquad((s) => s.map((x) => (x.id === p.id ? { ...x, onLoan: true, loanOA: withOA } : x)));
+    setFlash(`${p.name} prêté ${withOA ? "avec option d'achat" : "sans option d'achat"}.`);
+  };
+  const recallPlayer = (p) => {
+    setSquad((s) => s.map((x) => (x.id === p.id ? { ...x, onLoan: false, loanOA: false } : x)));
+    setFlash(`${p.name} rappelé de prêt.`);
+  };
+  const updateNumber = (id, num) => {
+    const n = Math.max(1, Math.min(99, Number(num) || 1));
+    setSquad((s) => s.map((x) => (x.id === id ? { ...x, num: n } : x)));
+  };
+  const addCustomPlayer = (mode) => {
+    if (!customForm.name.trim()) return;
+    const base = { id: `custom-${Date.now()}`, name: customForm.name.trim(), cat: customForm.cat, pos: CAT_LABEL[customForm.cat], age: Number(customForm.age) || 20, value: Number(customForm.value) || 1 };
+    if (mode === "achat") { setMarketPool((m) => [...m, base]); setFlash(`${base.name} ajouté aux pistes du marché.`); }
+    else {
+      const fee = Math.max(1, Math.round(base.value * 0.15 * 10) / 10);
+      if (transferBudget < fee) { setFlash("Budget insuffisant pour ce prêt."); return; }
+      setTransferBudget((b) => Math.round((b - fee) * 10) / 10);
+      setSquad((s) => [...s, { ...base, num: 99, onLoan: false, loanOA: false, loanedIn: true }]);
+      setFlash(`${base.name} arrive en prêt (indemnité ${fee}M€).`);
+    }
+    setCustomForm({ name: "", cat: "MID", age: 24, value: 10 });
+  };
+
+  const Chip = ({ player, slot, size = "md" }) => {
+    const isEmpty = !player, isSelected = player && selected === player.id;
+    return (
+      <button className={`ft-chip ft-chip-${size} ${isSelected ? "ft-chip-sel" : ""} ${isEmpty ? "ft-chip-empty" : ""}`}
+        onClick={() => player && handleSelect(player.id)} disabled={isEmpty}>
+        <Jersey club={club} num={player?.num} empty={isEmpty} />
+        <span className="ft-chip-name">{player ? shortName(player.name) : CAT_LABEL[slot.cat]}</span>
+        {player && size !== "sm" && <span className="ft-chip-tag">{player.cat} · {fmtValue(player.value)}</span>}
+      </button>
+    );
+  };
+  const Bar = ({ label, value, max = 25 }) => (
+    <div className="ft-bar-row">
+      <div className="ft-bar-label">{label}</div>
+      <div className="ft-bar-track"><div className="ft-bar-fill" style={{ width: `${Math.max(0, Math.min(100, (value / max) * 100))}%` }} /></div>
+      <div className="ft-bar-value">{Math.round(value)}/{max}</div>
+    </div>
+  );
+
+  const filteredMarket = marketPool.filter((p) => p.name.toLowerCase().includes(marketSearch.toLowerCase()));
+
+  return (
+    <div className="ft-root">
+      <nav className="ft-nav">
+        <button className={`ft-nav-btn ${view === "home" ? "ft-active" : ""}`} onClick={() => setView("home")}><Icon>🏠</Icon> Accueil</button>
+        <button className={`ft-nav-btn ${view === "squad" ? "ft-active" : ""}`} onClick={() => setView("squad")}><Icon>👕</Icon> Compositeur</button>
+        <button className={`ft-nav-btn ${view === "market" ? "ft-active" : ""}`} onClick={() => setView("market")}><Icon>🔁</Icon> Marché</button>
+      </nav>
+      {flash && <div className="ft-flash">{flash}</div>}
+      <div className="ft-body">
+        {dataSource === "loading" && <div className="ft-status loading"><Icon>📶</Icon> Connexion à API-Football…</div>}
+        {dataSource === "live" && <div className="ft-status live"><Icon>📶</Icon> Données en direct via API-Football</div>}
+        {dataSource === "demo" && <div className="ft-status demo"><Icon>🚫</Icon> Appel échoué ({liveError}) — mode démo hors-ligne.</div>}
+
+        {view === "home" && (<>
+          <div className="ft-hero">
+            <ClubCrest club={club} size={54} logoUrl={liveLogo} />
+            <h1>Fais ton Mercato</h1>
+            <p>Ligue 1 2026-2027 · choisis un club et prends les commandes de son effectif</p>
+          </div>
+          <div className="ft-grid">
+            {CLUBS.map((c) => (
+              <button key={c.id} className="ft-club-card" disabled={!c.active} onClick={() => c.active && setView("squad")}>
+                <ClubCrest club={c} size={40} logoUrl={c.id === "om" ? liveLogo : null} />
+                <span className="ft-club-name">{c.name}</span>
+                {!c.active && <span className="ft-soon">bientôt</span>}
+              </button>
+            ))}
+          </div>
+        </>)}
+
+        {view === "squad" && (<>
+          <div className="ft-head">
+            <ClubCrest club={club} size={44} logoUrl={liveLogo} />
+            <div><div className="ft-club">Olympique de Marseille</div><div className="ft-coach">Entraîneur : Bruno Genesio</div></div>
+            <div className="ft-formations">
+              {Object.keys(FORMATIONS).map((f) => (
+                <button key={f} className={`ft-fbtn ${f === formation ? "ft-fbtn-active" : ""}`} onClick={() => setFormation(f)}>{f}</button>
+              ))}
+            </div>
+          </div>
+          <div className="ft-budget">
+            <Icon>💰</Icon>
+            <div className="ft-budget-track"><div className={`ft-budget-fill ${score.used > SQUAD_VALUE_CAP ? "ft-over" : ""}`} style={{ width: `${Math.min(100, (score.used / SQUAD_VALUE_CAP) * 100)}%` }} /></div>
+            <div className="ft-budget-label">{score.hasValues ? `${score.used}M€ / ${SQUAD_VALUE_CAP}M€` : "valeur non fournie par l'API"}</div>
+          </div>
+          <div className="ft-pitch">
+            {starters.map(({ slot, player }) => (
+              <div key={slot.id} style={{ position: "absolute", top: `${slot.top}%`, left: `${slot.left}%` }}><Chip player={player} slot={slot} /></div>
+            ))}
+          </div>
+          <div className="ft-hint"><Icon>⇄</Icon> Cliquez un titulaire puis un joueur du banc ou de la réserve pour les échanger.</div>
+          <div className="ft-section-label"><span>Banc</span><span>{bench.length}/{BENCH_SIZE}</span></div>
+          <div className="ft-bench-row">{bench.map((p) => <Chip key={p.id} player={p} size="sm" />)}</div>
+          <div className="ft-section-label"><span>Réserve</span><span>{reserve.length} · illimitée</span></div>
+          <div className="ft-reserve">
+            {reserve.map((p) => (
+              <div key={p.id} className={`ft-res-pill ${selected === p.id ? "ft-chip-sel" : ""}`} onClick={() => handleSelect(p.id)}>
+                <span className="ft-res-num">{p.num}</span>{shortName(p.name)}
+              </div>
+            ))}
+          </div>
+          <div className="ft-score">
+            <div className="ft-score-head">
+              <div className="ft-gauge" style={{ "--pct": Math.round(score.total) }}><div className="ft-gauge-inner"><div className="ft-gauge-num">{Math.round(score.total)}</div><div className="ft-gauge-sub">/100</div></div></div>
+              <div><div className="ft-score-title">Note du mercato {score.partial && "(partielle)"}</div><div className="ft-score-desc">Âge moyen du onze : {score.avgAge ? score.avgAge.toFixed(1) : "n.c."} ans</div></div>
+            </div>
+            <Bar label="Couverture des postes" value={score.coverage} />
+            {score.hasValues ? <Bar label="Discipline budgétaire" value={score.budgetScore} /> : <div className="ft-bar-row"><div className="ft-bar-label">Discipline budgétaire</div><div className="ft-bar-track"><div className="ft-bar-fill ft-na" /></div><div className="ft-bar-value">n.c.</div></div>}
+            <Bar label="Cohérence d'effectif" value={score.coherence} />
+            {score.hasValues ? <Bar label="Valeur du recrutement" value={score.quality} /> : <div className="ft-bar-row"><div className="ft-bar-label">Valeur du recrutement</div><div className="ft-bar-track"><div className="ft-bar-fill ft-na" /></div><div className="ft-bar-value">n.c.</div></div>}
+          </div>
+        </>)}
+
+        {view === "market" && (<>
+          <div className="ft-dncg"><Icon>⚠️</Icon> Contrainte DNCG : budget recrutement quasi nul cet été (donnée saisie à la main).</div>
+          <div className="ft-market-budget"><Icon>💰</Icon> Budget mercato disponible<b>{transferBudget}M€</b></div>
+          <div className="ft-section-label"><span>Pistes du mercato</span></div>
+          <div className="ft-search"><Icon>🔍</Icon><input placeholder="Rechercher un joueur…" value={marketSearch} onChange={(e) => setMarketSearch(e.target.value)} /></div>
+          {filteredMarket.map((p) => (
+            <div key={p.id} className="ft-row">
+              <div className="ft-row-num">{p.cat}</div>
+              <div><div className="ft-row-name">{p.name}</div><div className="ft-row-sub">{p.pos} · {p.age} ans</div></div>
+              <div className="ft-row-actions"><button className="ft-mini-btn ft-buy" disabled={transferBudget < p.value} onClick={() => buyPlayer(p)}>Acheter · {fmtValue(p.value)}</button></div>
+            </div>
+          ))}
+          {filteredMarket.length === 0 && <div className="ft-row-sub">Aucun joueur trouvé — ajoute-le toi-même ci-dessous.</div>}
+          <div className="ft-custom">
+            <div className="ft-custom-title"><Icon>➕</Icon> Pas dans la liste ? Ajoute-le</div>
+            <div className="ft-custom-grid">
+              <input placeholder="Nom du joueur" value={customForm.name} onChange={(e) => setCustomForm((f) => ({ ...f, name: e.target.value }))} />
+              <select value={customForm.cat} onChange={(e) => setCustomForm((f) => ({ ...f, cat: e.target.value }))}>
+                <option value="GK">Gardien</option><option value="DEF">Défenseur</option><option value="MID">Milieu</option><option value="FWD">Attaquant</option>
+              </select>
+              <input type="number" placeholder="Âge" value={customForm.age} onChange={(e) => setCustomForm((f) => ({ ...f, age: e.target.value }))} />
+              <input type="number" placeholder="Valeur (M€)" value={customForm.value} onChange={(e) => setCustomForm((f) => ({ ...f, value: e.target.value }))} />
+            </div>
+            <div className="ft-custom-actions">
+              <button className="ft-mini-btn ft-buy" onClick={() => addCustomPlayer("achat")}>Ajouter comme piste d'achat</button>
+              <button className="ft-mini-btn" onClick={() => addCustomPlayer("pret")}>Faire venir en prêt</button>
+            </div>
+          </div>
+          <div className="ft-section-label"><span>Votre effectif</span></div>
+          {squad.filter((p) => !p.onLoan).map((p) => (
+            <div key={p.id} className="ft-row">
+              {p.photo ? <img className="ft-row-photo" src={p.photo} alt="" /> : <input className="ft-num-input" type="number" value={p.num} min={1} max={99} onChange={(e) => updateNumber(p.id, e.target.value)} />}
+              <div>
+                <div className="ft-row-name">{p.name}{p.saleTag && <span className="ft-tag-sale">en instance de départ</span>}{p.loanedIn && <span className="ft-tag-loan">prêté à l'OM</span>}</div>
+                <div className="ft-row-sub">{p.pos} · {p.age ? `${p.age} ans` : "âge n.c."} · {fmtValue(p.value)}</div>
+              </div>
+              <div className="ft-row-actions">
+                <button className="ft-mini-btn" onClick={() => loanOutPlayer(p, false)}>Prêter</button>
+                <button className="ft-mini-btn" onClick={() => loanOutPlayer(p, true)}>Prêter +OA</button>
+                <button className="ft-mini-btn ft-sell" onClick={() => sellPlayer(p)}>Vendre{p.value != null ? ` · ${Math.round(p.value * 0.9 * 10) / 10}M€` : ""}</button>
+              </div>
+            </div>
+          ))}
+          {onLoanList.length > 0 && (<>
+            <div className="ft-section-label"><span>Joueurs prêtés</span></div>
+            {onLoanList.map((p) => (
+              <div key={p.id} className="ft-row">
+                <div className="ft-row-num">{p.num}</div>
+                <div><div className="ft-row-name">{p.name}{p.loanOA && <span className="ft-oa">OA</span>}</div><div className="ft-row-sub">{p.pos}</div></div>
+                <div className="ft-row-actions"><button className="ft-mini-btn" onClick={() => recallPlayer(p)}><Icon size={11}>↩️</Icon> Rappeler</button></div>
+              </div>
+            ))}
+          </>)}
+        </>)}
+
+        <div className="ft-footnote"><Icon>ℹ️</Icon> {dataSource === "live" ? "Effectif et logo récupérés en direct depuis API-Football." : "Repli sur des données saisies à la main (16/08/2026)."}</div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
+</script>
+
+<style>
+  .ft-root { --ink:#0A0E12; --panel:#121A17; --panel-2:#182420; --chalk:#F4F7F1; --muted:#9FB0A6;
+    --gold:#E6B450; --coral:#E4573D; --green:#2F9E74; --line:rgba(244,247,241,0.14);
+    --pitch-a:#0F4A38; --pitch-b:#125640;
+    background:var(--ink); color:var(--chalk); font-family:'Inter',sans-serif;
+    border-radius:18px; max-width:560px; width:100%; margin:0 auto; overflow:hidden; border:1px solid var(--line); }
+  .ft-nav { display:flex; gap:4px; padding:12px 14px; border-bottom:1px solid var(--line); background:var(--panel); }
+  .ft-nav-btn { display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; color:var(--muted);
+    background:transparent; border:none; padding:7px 10px; border-radius:8px; cursor:pointer; }
+  .ft-nav-btn.ft-active { background:var(--gold); color:var(--ink); }
+  .ft-body { padding:18px 20px; }
+  .ft-status { display:flex; align-items:center; gap:8px; font-size:10.5px; padding:8px 12px; border-radius:10px; margin-bottom:14px; }
+  .ft-status.live { background:rgba(47,158,116,0.15); color:#9fe3c4; }
+  .ft-status.demo { background:rgba(228,87,61,0.12); color:#f3b8ac; }
+  .ft-status.loading { background:var(--panel); color:var(--muted); }
+  .ft-crest-wrap { display:flex; flex-direction:column; align-items:center; gap:1px; flex-shrink:0; }
+  .ft-crest-star { color:var(--gold); line-height:1; }
+  .ft-crest { clip-path:polygon(50% 0%,100% 16%,100% 62%,50% 100%,0% 62%,0% 16%);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Anton',sans-serif;
+    letter-spacing:0.2px; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,0.5); text-align:center; line-height:1; }
+  .ft-hero { text-align:center; padding:10px 4px 20px; }
+  .ft-hero h1 { font-family:'Anton',sans-serif; font-size:26px; letter-spacing:0.5px; margin:10px 0 4px; }
+  .ft-hero p { font-size:12.5px; color:var(--muted); }
+  .ft-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px; }
+  .ft-club-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 6px;
+    display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; }
+  .ft-club-card[disabled] { opacity:0.4; cursor:not-allowed; }
+  .ft-club-name { font-size:9.5px; text-align:center; line-height:1.2; color:var(--chalk); }
+  .ft-soon { font-family:'IBM Plex Mono',monospace; font-size:7.5px; color:var(--muted); }
+  .ft-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .ft-club { font-family:'Anton',sans-serif; font-size:19px; letter-spacing:0.3px; line-height:1; }
+  .ft-coach { font-size:11px; color:var(--muted); margin-top:3px; }
+  .ft-formations { display:flex; gap:6px; margin-left:auto; }
+  .ft-fbtn { font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; background:var(--panel);
+    border:1px solid var(--line); color:var(--muted); padding:6px 8px; border-radius:8px; cursor:pointer; }
+  .ft-fbtn-active { background:var(--gold); color:var(--ink); border-color:var(--gold); }
+  .ft-budget { display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:11.5px; }
+  .ft-budget-track { flex:1; height:8px; border-radius:5px; background:var(--panel); overflow:hidden; }
+  .ft-budget-fill { height:100%; background:linear-gradient(90deg,var(--gold),#F2CE86); }
+  .ft-budget-fill.ft-over { background:linear-gradient(90deg,var(--coral),#ff8a75); }
+  .ft-budget-label { font-family:'IBM Plex Mono',monospace; color:var(--muted); white-space:nowrap; }
+  .ft-pitch { position:relative; width:100%; aspect-ratio:3/4.1; border-radius:14px; overflow:hidden;
+    background:repeating-linear-gradient(180deg, var(--pitch-a) 0 11%, var(--pitch-b) 11% 22%); border:1px solid var(--line); }
+  .ft-pitch::before { content:''; position:absolute; inset:6%; border:1.5px solid rgba(244,247,241,0.35); border-radius:2px; }
+  .ft-pitch::after { content:''; position:absolute; top:50%; left:50%; width:26%; aspect-ratio:1;
+    border:1.5px solid rgba(244,247,241,0.35); border-radius:50%; transform:translate(-50%,-50%); }
+  .ft-chip { position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center;
+    background:none; border:none; cursor:pointer; padding:0; width:56px; }
+  .ft-bench-row .ft-chip { position:static; transform:none; flex-shrink:0; }
+  .ft-jersey { position:relative; width:32px; height:32px; margin:0 auto; display:flex; align-items:center; justify-content:center;
+    background:#fff; overflow:hidden;
+    clip-path:polygon(22% 0%,38% 0%,50% 14%,62% 0%,78% 0%,100% 22%,84% 36%,84% 100%,16% 100%,16% 36%,0% 22%);
+    box-shadow:0 2px 6px rgba(0,0,0,0.35); }
+  .ft-jersey-sleeve { position:absolute; top:0; width:38%; height:44%; }
+  .ft-jersey-sleeve-l { left:0; clip-path:polygon(0 0,100% 0,60% 100%,0 65%); }
+  .ft-jersey-sleeve-r { right:0; clip-path:polygon(0 0,100% 0,100% 65%,40% 100%); }
+  .ft-jersey-collar { position:absolute; top:0; left:38%; width:24%; height:16%; clip-path:polygon(0 0,100% 0,60% 100%,40% 100%); }
+  .ft-jersey-num { position:relative; z-index:2; font-family:'Anton',sans-serif; font-size:12px; color:#0B2545; }
+  .ft-jersey-empty { background:transparent; border:1.5px dashed rgba(244,247,241,0.4); }
+  .ft-jersey-empty .ft-jersey-num { color:var(--muted); }
+  .ft-chip-sel .ft-jersey { outline:2px solid var(--chalk); outline-offset:2px; }
+  .ft-chip-name { font-size:9.5px; margin-top:3px; font-weight:600; text-align:center; }
+  .ft-chip-tag { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); }
+  .ft-hint { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); margin:10px 0; }
+  .ft-section-label { display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin:16px 0 8px; }
+  .ft-bench-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
+  .ft-reserve { display:flex; flex-wrap:wrap; gap:8px; }
+  .ft-res-pill { display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line);
+    border-radius:20px; padding:5px 10px 5px 6px; cursor:pointer; font-size:11px; }
+  .ft-res-pill.ft-chip-sel { outline:2px solid var(--chalk); }
+  .ft-res-num { width:18px; height:18px; border-radius:50%; background:#0B2545; color:#fff; display:flex; align-items:center;
+    justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; }
+  .ft-score { margin-top:20px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .ft-score-head { display:flex; align-items:center; gap:16px; margin-bottom:12px; }
+  .ft-gauge { width:62px; height:62px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    background:conic-gradient(var(--gold) calc(var(--pct) * 1%), rgba(244,247,241,0.1) 0); }
+  .ft-gauge-inner { width:48px; height:48px; border-radius:50%; background:var(--ink); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; }
+  .ft-gauge-num { font-family:'Anton',sans-serif; font-size:16px; line-height:1; }
+  .ft-gauge-sub { font-size:7px; color:var(--muted); }
+  .ft-score-title { font-family:'Anton',sans-serif; font-size:14px; }
+  .ft-score-desc { font-size:11px; color:var(--muted); margin-top:2px; }
+  .ft-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; font-size:11px; }
+  .ft-bar-label { width:125px; color:var(--muted); flex-shrink:0; }
+  .ft-bar-track { flex:1; height:6px; border-radius:4px; background:var(--panel-2); overflow:hidden; }
+  .ft-bar-fill { height:100%; background:var(--green); border-radius:4px; }
+  .ft-bar-fill.ft-na { background:repeating-linear-gradient(45deg, var(--panel-2), var(--panel-2) 4px, rgba(244,247,241,0.08) 4px, rgba(244,247,241,0.08) 8px); width:100% !important; }
+  .ft-bar-value { font-family:'IBM Plex Mono',monospace; width:36px; text-align:right; color:var(--muted); flex-shrink:0; }
+  .ft-dncg { display:flex; gap:8px; align-items:flex-start; background:rgba(228,87,61,0.12); border:1px solid rgba(228,87,61,0.4);
+    border-radius:12px; padding:10px 12px; margin-bottom:14px; font-size:11px; color:#f3b8ac; line-height:1.4; }
+  .ft-market-budget { display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:12px 14px; margin-bottom:14px; }
+  .ft-market-budget b { font-family:'Anton',sans-serif; font-size:18px; color:var(--gold); margin-left:auto; }
+  .ft-search { display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
+    border-radius:10px; padding:8px 10px; margin-bottom:10px; }
+  .ft-search input { background:none; border:none; outline:none; color:var(--chalk); font-size:12px; width:100%; }
+  .ft-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:12px; }
+  .ft-row:last-child { border-bottom:none; }
+  .ft-row-num { width:22px; height:22px; border-radius:50%; background:#0B2545; color:#fff; display:flex; align-items:center;
+    justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; flex-shrink:0; }
+  .ft-row-photo { width:26px; height:26px; border-radius:50%; object-fit:cover; flex-shrink:0; background:var(--panel-2); }
+  .ft-num-input { width:36px; text-align:center; background:var(--panel-2); border:1px solid var(--line); color:var(--chalk);
+    border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:11px; padding:3px 0; flex-shrink:0; }
+  .ft-row-name { font-weight:600; }
+  .ft-row-sub { font-size:10px; color:var(--muted); }
+  .ft-row-actions { margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .ft-mini-btn { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; border-radius:7px; padding:6px 8px;
+    border:1px solid var(--line); background:var(--panel-2); color:var(--chalk); cursor:pointer; white-space:nowrap; }
+  .ft-mini-btn.ft-buy { background:var(--gold); color:var(--ink); border-color:var(--gold); }
+  .ft-mini-btn.ft-sell { background:var(--coral); color:#fff; border-color:var(--coral); }
+  .ft-mini-btn:disabled { opacity:0.35; cursor:not-allowed; }
+  .ft-oa, .ft-tag-sale, .ft-tag-loan { font-family:'IBM Plex Mono',monospace; font-size:8px; border-radius:5px; padding:1px 5px; margin-left:5px; }
+  .ft-oa { background:var(--gold); color:var(--ink); }
+  .ft-tag-sale { background:rgba(228,87,61,0.25); color:#f3b8ac; }
+  .ft-tag-loan { background:rgba(47,158,116,0.25); color:#9fe3c4; }
+  .ft-custom { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; margin:12px 0 4px; }
+  .ft-custom-title { font-size:11px; font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .ft-custom-grid { display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:8px; }
+  .ft-custom input, .ft-custom select { background:var(--panel-2); border:1px solid var(--line); color:var(--chalk);
+    border-radius:7px; padding:7px 8px; font-size:11px; font-family:'Inter',sans-serif; width:100%; }
+  .ft-custom-actions { display:flex; gap:6px; }
+  .ft-flash { position:sticky; top:0; z-index:5; background:var(--gold); color:var(--ink); font-size:11.5px; font-weight:600;
+    padding:8px 14px; text-align:center; }
+  .ft-footnote { display:flex; gap:6px; font-size:10.5px; color:var(--muted); margin-top:14px; line-height:1.4; }
+</style>
+</body>
+</html>
