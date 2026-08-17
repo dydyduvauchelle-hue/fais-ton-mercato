@@ -223,7 +223,7 @@ function FaisTonMercato() {
         const r = await fetch(url);
         const data = await r.json();
         if (data.rateLimit) setQuotaInfo(data.rateLimit);
-        if (data.error) throw new Error(data.error);
+        if (data.error) throw new Error(data.rateLimit?.remaining != null ? `${data.error} (quota restant : ${data.rateLimit.remaining}/${data.rateLimit.limit})` : data.error);
         const team = data.team;
         const players = data.players || [];
         if (!team || players.length === 0) throw new Error("Réponse vide");
@@ -266,9 +266,10 @@ function FaisTonMercato() {
       const r = await fetch(`/api/leagues?country=${encodeURIComponent(code)}`);
       const data = await r.json();
       if (data.rateLimit) setQuotaInfo(data.rateLimit);
-      if (data.error) throw new Error(data.error);
+      if (data.error) throw new Error(data.rateLimit?.remaining != null ? `${data.error} (quota restant : ${data.rateLimit.remaining}/${data.rateLimit.limit})` : data.error);
       setLeaguesList(data.leagues || []);
-      if (!data.leagues || data.leagues.length === 0) setBrowseError("Aucune division trouvée pour ce pays.");
+      if ((!data.leagues || data.leagues.length === 0) && data.rateLimit?.remaining != null && Number(data.rateLimit.remaining) < 5) setBrowseError(`Aucune division trouvée — quota API presque épuisé (${data.rateLimit.remaining}/${data.rateLimit.limit} restant aujourd'hui).`);
+      else if (!data.leagues || data.leagues.length === 0) setBrowseError("Aucune division trouvée pour ce pays.");
     } catch (err) { setBrowseError(err.message); } finally { setBrowseLoading(false); }
   };
 
@@ -278,9 +279,10 @@ function FaisTonMercato() {
       const r = await fetch(`/api/teams-by-league?league=${league.id}`);
       const data = await r.json();
       if (data.rateLimit) setQuotaInfo(data.rateLimit);
-      if (data.error) throw new Error(data.error);
+      if (data.error) throw new Error(data.rateLimit?.remaining != null ? `${data.error} (quota restant : ${data.rateLimit.remaining}/${data.rateLimit.limit})` : data.error);
       setClubsList(data.teams || []);
-      if (!data.teams || data.teams.length === 0) setBrowseError("Aucun club trouvé pour cette division.");
+      if ((!data.teams || data.teams.length === 0) && data.rateLimit?.remaining != null && Number(data.rateLimit.remaining) < 5) setBrowseError(`Aucun club trouvé — quota API presque épuisé (${data.rateLimit.remaining}/${data.rateLimit.limit} restant aujourd'hui).`);
+      else if (!data.teams || data.teams.length === 0) setBrowseError("Aucun club trouvé pour cette division.");
     } catch (err) { setBrowseError(err.message); } finally { setBrowseLoading(false); }
   };
 
@@ -627,12 +629,6 @@ function FaisTonMercato() {
           </>)}
         </>)}
 
-        {quotaInfo && quotaInfo.remaining != null && (
-          <div className={`ft-status ${Number(quotaInfo.remaining) < 15 ? "demo" : "loading"}`}>
-            <Icon>🎯</Icon> Quota API restant aujourd'hui : {quotaInfo.remaining} / {quotaInfo.limit}
-            {Number(quotaInfo.remaining) < 15 && " — presque épuisé, les prochains chargements vont échouer."}
-          </div>
-        )}
         <div className="ft-footnote"><Icon>ℹ️</Icon> {dataSource === "live" ? "Effectif et logo en direct depuis API-Football. Valeurs et salaires estimés (âge/poste) — pas des données officielles." : "Repli sur des données saisies à la main."}</div>
       </div>
     </div>
