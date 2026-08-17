@@ -252,6 +252,13 @@ function FaisTonMercato() {
   const [authPassword, setAuthPassword] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [authMsg, setAuthMsg] = useState("");
+  const [accountTab, setAccountTab] = useState("profile");
+  const [displayName, setDisplayName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileMsg, setProfileMsg] = useState("");
+  const [mySaves, setMySaves] = useState([]);
+  const [savesLoading, setSavesLoading] = useState(false);
 
   useEffect(() => {
     sb.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
@@ -278,7 +285,49 @@ function FaisTonMercato() {
   const doSignOut = async () => { await sb.auth.signOut(); setFlash("Déconnecté."); };
 
   useEffect(() => {
-    if (!authReady) return;
+    if (session) {
+      setDisplayName(session.user.user_metadata?.full_name || "");
+      loadMySaves();
+    }
+  }, [session?.user?.id]);
+
+  const loadMySaves = async () => {
+    if (!session) return;
+    setSavesLoading(true);
+    try {
+      const { data } = await sb.from("saves").select("club_key, updated_at").eq("user_id", session.user.id).order("updated_at", { ascending: false });
+      setMySaves(data || []);
+    } catch (e) {} finally { setSavesLoading(false); }
+  };
+
+  const updateProfile = async () => {
+    setProfileBusy(true); setProfileMsg("");
+    try {
+      const { error } = await sb.auth.updateUser({ data: { full_name: displayName } });
+      if (error) throw error;
+      setProfileMsg("Nom mis à jour.");
+    } catch (err) { setProfileMsg(err.message || "Erreur."); } finally { setProfileBusy(false); }
+  };
+  const updatePassword = async () => {
+    if (newPassword.length < 6) { setProfileMsg("Le mot de passe doit faire au moins 6 caractères."); return; }
+    setProfileBusy(true); setProfileMsg("");
+    try {
+      const { error } = await sb.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setProfileMsg("Mot de passe mis à jour.");
+      setNewPassword("");
+    } catch (err) { setProfileMsg(err.message || "Erreur."); } finally { setProfileBusy(false); }
+  };
+  const deleteSave = async (clubKey) => {
+    if (!session) return;
+    await sb.from("saves").delete().eq("user_id", session.user.id).eq("club_key", clubKey);
+    try { localStorage.removeItem(`ftm-save-${clubKey}`); } catch (e) {}
+    loadMySaves();
+    setFlash("Sauvegarde supprimée.");
+  };
+
+  useEffect(() => {
+    if (!authReady || !session) return;
     let cancelled = false;
     setDataSource("loading");
 
@@ -339,7 +388,7 @@ function FaisTonMercato() {
   }, [activeKey, authReady, session]);
 
   useEffect(() => {
-    if (squad.length === 0 || !authReady) return;
+    if (squad.length === 0 || !authReady || !session) return;
     const payload = { squad, formation, transferBudget, dncgSold, marketPool, logo: logosCache[activeKey]?.logo || null, coach: logosCache[activeKey]?.coach || null };
     try { localStorage.setItem(`ftm-save-${activeKey}`, JSON.stringify(payload)); } catch (e) {}
     if (session) {
@@ -513,38 +562,87 @@ function FaisTonMercato() {
   const filteredMarket = marketPool.filter((p) => p.name.toLowerCase().includes(marketSearch.toLowerCase()));
   const dncgDone = dncgSold >= DNCG_TARGET;
 
+  if (!authReady) {
+    return <div className="ft-root ft-auth-loading"><Icon size={22}>⚽</Icon></div>;
+  }
+
+  if (!session) {
+    return (
+      <div className="ft-root">
+        <div className="ft-body">
+          <div className="ft-hero">
+            <div className="ft-hero-mark">⚽</div>
+            <h1>Fais ton Mercato</h1>
+            <p>Connecte-toi pour commencer — ta partie te suit partout.</p>
+          </div>
+          <div className="ft-auth-card">
+            <div className="ft-modal-title">{authMode === "signin" ? "Se connecter" : "Créer un compte"}</div>
+            <input className="ft-modal-input" type="email" placeholder="Email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} />
+            <input className="ft-modal-input" type="password" placeholder="Mot de passe (6 caractères min.)" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} />
+            {authMsg && <div className="ft-row-sub" style={{ color: "var(--gold)", marginBottom: 8 }}>{authMsg}</div>}
+            <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "10px 0", marginBottom: 8 }} disabled={authBusy} onClick={doAuth}>
+              {authBusy ? "…" : authMode === "signin" ? "Se connecter" : "Créer le compte"}
+            </button>
+            <div className="ft-reset-link" style={{ textAlign: "center" }} onClick={() => { setAuthMode(authMode === "signin" ? "signup" : "signin"); setAuthMsg(""); }}>
+              {authMode === "signin" ? "Pas de compte ? En créer un" : "Déjà un compte ? Se connecter"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ft-root">
       <nav className="ft-nav">
         <button className={`ft-nav-btn ${view === "home" ? "ft-active" : ""}`} onClick={() => setView("home")}><Icon>🏠</Icon> Accueil</button>
         <button className={`ft-nav-btn ${view === "squad" ? "ft-active" : ""}`} onClick={() => setView("squad")}><Icon>👕</Icon> Compositeur</button>
         <button className={`ft-nav-btn ${view === "market" ? "ft-active" : ""}`} onClick={() => setView("market")}><Icon>🔁</Icon> Marché</button>
-        <button className="ft-account-btn" onClick={() => setShowAuth(true)}>
-          {session ? <Icon>👤</Icon> : <Icon>🔑</Icon>}
-        </button>
+        <button className="ft-account-btn" onClick={() => { setShowAuth(true); loadMySaves(); }}><Icon>👤</Icon></button>
       </nav>
       {flash && <div className="ft-flash">{flash}</div>}
 
       {showAuth && (
         <div className="ft-modal-backdrop" onClick={() => setShowAuth(false)}>
-          <div className="ft-modal" onClick={(e) => e.stopPropagation()}>
-            {session ? (<>
-              <div className="ft-modal-title">Mon compte</div>
-              <div className="ft-row-sub" style={{ marginBottom: 14 }}>{session.user.email}</div>
-              <button className="ft-mini-btn ft-sell" onClick={doSignOut}>Se déconnecter</button>
-            </>) : (<>
-              <div className="ft-modal-title">{authMode === "signin" ? "Se connecter" : "Créer un compte"}</div>
-              <div className="ft-row-sub" style={{ marginBottom: 12 }}>Garde tes parties synchronisées entre tes appareils.</div>
-              <input className="ft-modal-input" type="email" placeholder="Email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} />
-              <input className="ft-modal-input" type="password" placeholder="Mot de passe" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} />
-              {authMsg && <div className="ft-row-sub" style={{ color: "var(--gold)", marginBottom: 8 }}>{authMsg}</div>}
-              <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "10px 0", marginBottom: 8 }} disabled={authBusy} onClick={doAuth}>
-                {authBusy ? "…" : authMode === "signin" ? "Se connecter" : "Créer le compte"}
-              </button>
-              <div className="ft-reset-link" onClick={() => { setAuthMode(authMode === "signin" ? "signup" : "signin"); setAuthMsg(""); }}>
-                {authMode === "signin" ? "Pas de compte ? En créer un" : "Déjà un compte ? Se connecter"}
-              </div>
+          <div className="ft-modal ft-modal-wide" onClick={(e) => e.stopPropagation()}>
+            <div className="ft-modal-title">Mon compte</div>
+            <div className="ft-row-sub" style={{ marginBottom: 14 }}>{session.user.email}</div>
+            <div className="ft-account-tabs">
+              <button className={`ft-account-tab ${accountTab === "profile" ? "ft-active" : ""}`} onClick={() => setAccountTab("profile")}>Profil</button>
+              <button className={`ft-account-tab ${accountTab === "security" ? "ft-active" : ""}`} onClick={() => setAccountTab("security")}>Mot de passe</button>
+              <button className={`ft-account-tab ${accountTab === "saves" ? "ft-active" : ""}`} onClick={() => setAccountTab("saves")}>Mes parties</button>
+            </div>
+
+            {accountTab === "profile" && (<>
+              <div className="ft-row-sub" style={{ marginBottom: 6 }}>Nom affiché</div>
+              <input className="ft-modal-input" placeholder="Ton nom" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+              <button className="ft-mini-btn ft-buy" disabled={profileBusy} onClick={updateProfile}>Enregistrer</button>
+              <div className="ft-row-sub" style={{ marginTop: 10 }}>La photo de profil arrivera avec le prochain chantier (stockage de fichiers à configurer).</div>
             </>)}
+            {accountTab === "security" && (<>
+              <div className="ft-row-sub" style={{ marginBottom: 6 }}>Nouveau mot de passe</div>
+              <input className="ft-modal-input" type="password" placeholder="6 caractères min." value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <button className="ft-mini-btn ft-buy" disabled={profileBusy} onClick={updatePassword}>Mettre à jour</button>
+            </>)}
+            {accountTab === "saves" && (<>
+              {savesLoading && <div className="ft-row-sub">Chargement…</div>}
+              {!savesLoading && mySaves.length === 0 && <div className="ft-row-sub">Aucune partie sauvegardée pour l'instant.</div>}
+              {mySaves.map((s) => {
+                const c = CLUBS.find((x) => x.id === s.club_key);
+                return (
+                  <div key={s.club_key} className="ft-row">
+                    <div><div className="ft-row-name">{c ? c.name : s.club_key}</div><div className="ft-row-sub">Mise à jour : {new Date(s.updated_at).toLocaleDateString()}</div></div>
+                    <div className="ft-row-actions">
+                      <button className="ft-mini-btn ft-buy" onClick={() => { setActiveKey(s.club_key); setShowAuth(false); setView("squad"); }}>Ouvrir</button>
+                      <button className="ft-mini-btn ft-sell" onClick={() => deleteSave(s.club_key)}>Supprimer</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </>)}
+
+            {profileMsg && <div className="ft-row-sub" style={{ color: "var(--gold)", marginTop: 8 }}>{profileMsg}</div>}
+            <button className="ft-mini-btn ft-sell" style={{ marginTop: 16, width: "100%" }} onClick={doSignOut}>Se déconnecter</button>
             <div className="ft-modal-close" onClick={() => setShowAuth(false)}>✕</div>
           </div>
         </div>
@@ -763,6 +861,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
     width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--chalk);
     transition:all .15s ease; }
   .ft-account-btn:hover { border-color:var(--gold); transform:scale(1.06); }
+  .ft-auth-loading { display:flex; align-items:center; justify-content:center; min-height:200px; }
+  .ft-auth-card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px; margin-top:10px; }
+  .ft-account-tabs { display:flex; gap:4px; margin-bottom:14px; border-bottom:1px solid var(--line); padding-bottom:10px; }
+  .ft-account-tab { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; background:none; border:none;
+    color:var(--muted); padding:6px 8px; border-radius:6px; cursor:pointer; }
+  .ft-account-tab.ft-active { background:var(--panel-2); color:var(--gold); }
+  .ft-modal-wide { width:320px; max-height:80vh; overflow-y:auto; }
   .ft-body { padding:18px 20px; }
   .ft-fade-in { animation: ftFadeIn .25s ease; }
 
