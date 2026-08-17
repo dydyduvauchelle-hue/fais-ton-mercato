@@ -145,16 +145,16 @@ const START_TRANSFER_BUDGET = 10;
 const DNCG_TARGET = 80;
 
 const DIVISIONS = [
-  { id: 61, country: "France", name: "Ligue 1" },
-  { id: 62, country: "France", name: "Ligue 2" },
-  { id: 39, country: "England", name: "Premier League" },
-  { id: 40, country: "England", name: "Championship" },
-  { id: 78, country: "Germany", name: "Bundesliga" },
-  { id: 79, country: "Germany", name: "2. Bundesliga" },
-  { id: 140, country: "Spain", name: "La Liga" },
-  { id: 141, country: "Spain", name: "Segunda División" },
-  { id: 135, country: "Italy", name: "Serie A" },
-  { id: 136, country: "Italy", name: "Serie B" },
+  { id: 61, country: "France", name: "Ligue 1", code: "L1", c1: "#0B2545", c2: "#2AABE2" },
+  { id: 62, country: "France", name: "Ligue 2", code: "L2", c1: "#0B2545", c2: "#F4F7F1" },
+  { id: 39, country: "England", name: "Premier League", code: "PL", c1: "#38003C", c2: "#00FF87" },
+  { id: 40, country: "England", name: "Championship", code: "CH", c1: "#1C2C5B", c2: "#E2001A" },
+  { id: 78, country: "Germany", name: "Bundesliga", code: "BL1", c1: "#000000", c2: "#D3010C" },
+  { id: 79, country: "Germany", name: "2. Bundesliga", code: "BL2", c1: "#000000", c2: "#F4F7F1" },
+  { id: 140, country: "Spain", name: "La Liga", code: "LL", c1: "#EE8707", c2: "#000000" },
+  { id: 141, country: "Spain", name: "Segunda División", code: "LL2", c1: "#EE8707", c2: "#F4F7F1" },
+  { id: 135, country: "Italy", name: "Serie A", code: "SA", c1: "#003D7C", c2: "#F4F7F1" },
+  { id: 136, country: "Italy", name: "Serie B", code: "SB", c1: "#003D7C", c2: "#2AABE2" },
 ];
 const COUNTRY_META = {
   France: { label: "France", flagCode: "fr" },
@@ -266,21 +266,22 @@ function makeTable(clubId) {
 
 /* ==================================================================== */
 function FaisTonMercato() {
-  const [activeKey, setActiveKey] = useState("om");
-  const club = CLUBS.find((c) => c.id === activeKey);
+  const [activeKey, setActiveKey] = useState(null);
+  const club = activeKey ? CLUBS.find((c) => c.id === activeKey) : null;
   const [view, setView] = useState("home");
-  const [homeStage, setHomeStage] = useState("root");
+  const [homeStage, setHomeStage] = useState("country");
+  const [browseCountry, setBrowseCountry] = useState(null);
   const [browseDivision, setBrowseDivision] = useState(null);
   const [clubsList, setClubsList] = useState([]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseError, setBrowseError] = useState("");
 
-  const [squad, setSquad] = useState(FALLBACK_SQUADS.om);
+  const [squad, setSquad] = useState([]);
   const [marketPool, setMarketPool] = useState(MARKET_POOL);
   const [transferBudget, setTransferBudget] = useState(START_TRANSFER_BUDGET);
   const [dncgSold, setDncgSold] = useState(0);
   const [formation, setFormation] = useState("4-3-3");
-  const [assignment, setAssignment] = useState(() => assignSlots(FALLBACK_SQUADS.om, "4-3-3"));
+  const [assignment, setAssignment] = useState({});
   const [selected, setSelected] = useState(null);
   const [flash, setFlash] = useState("");
   const [marketSearch, setMarketSearch] = useState("");
@@ -298,6 +299,7 @@ function FaisTonMercato() {
   const [authMode, setAuthMode] = useState("signin");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [authMsg, setAuthMsg] = useState("");
   const [accountTab, setAccountTab] = useState("profile");
@@ -408,87 +410,101 @@ function FaisTonMercato() {
     setFlash("Sauvegarde supprimée.");
   };
 
-  useEffect(() => {
-    if (!authReady || !session) return;
-    let cancelled = false;
+  const freshLoadRef = React.useRef(true);
+
+  const loadFreshClub = async (clubId) => {
+    const c = CLUBS.find((x) => x.id === clubId);
+    if (!c) return;
     setDataSource("loading");
-
-    async function getSaved() {
-      if (session) {
-        try {
-          const { data } = await sb.from("saves").select("data").eq("user_id", session.user.id).eq("club_key", activeKey).maybeSingle();
-          if (data && data.data) return data.data;
-        } catch (e) {}
-      }
-      try { const raw = localStorage.getItem(`ftm-save-${activeKey}`); if (raw) return JSON.parse(raw); } catch (e) {}
-      return null;
+    setSquad(FALLBACK_SQUADS[clubId] || []);
+    setTransferBudget(START_TRANSFER_BUDGET);
+    setDncgSold(0);
+    setMarketPool(MARKET_POOL);
+    setFixtures(makeFixtures(clubId));
+    setTable(makeTable(clubId));
+    setTransferLog([]);
+    setSeasonResult(null);
+    setMercatoRevealed(false);
+    try {
+      const r = await fetch(`/api/squad?team=${encodeURIComponent(c.apiQuery)}`);
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      const team = data.team;
+      const players = data.players || [];
+      if (!team || players.length === 0) throw new Error("Réponse vide");
+      setLogosCache((prev) => ({ ...prev, [clubId]: { logo: team.logo || null, coach: data.coach || null } }));
+      const mapped = players.map((p) => {
+        const cat = POS_MAP[p.position] || "MID";
+        return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
+          age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
+          contractEnd: contractFor(p.age || 25), verified: true,
+          onLoan: false, loanOA: false, loanedIn: false };
+      });
+      setSquad(mapped);
+      setDataSource("live");
+    } catch (err) {
+      setLiveError(err.message || "Erreur inconnue");
+      setDataSource("demo");
     }
+  };
 
-    async function run() {
-      const saved = await getSaved();
-      if (cancelled) return;
-      if (saved) {
-        setSquad(saved.squad || []);
-        setFormation(saved.formation || "4-3-3");
-        setTransferBudget(saved.transferBudget ?? START_TRANSFER_BUDGET);
-        setDncgSold(saved.dncgSold ?? 0);
-        setMarketPool(saved.marketPool || MARKET_POOL);
-        setLogosCache((prev) => ({ ...prev, [activeKey]: { logo: saved.logo || null, coach: saved.coach || null } }));
-        setFixtures(saved.fixtures || makeFixtures(activeKey));
-        setTable(saved.table || makeTable(activeKey));
-        setTransferLog(saved.transferLog || []);
-        setSeasonResult(saved.seasonResult || null);
-        setMercatoRevealed(saved.mercatoRevealed || false);
-        setDataSource("saved");
-        return;
-      }
-
-      setSquad(FALLBACK_SQUADS[activeKey] || []);
-      setTransferBudget(START_TRANSFER_BUDGET);
-      setDncgSold(0);
-      setMarketPool(MARKET_POOL);
-      setFixtures(makeFixtures(activeKey));
-      setTable(makeTable(activeKey));
-      setTransferLog([]);
-      setSeasonResult(null);
-      setMercatoRevealed(false);
-
-      try {
-        const r = await fetch(`/api/squad?team=${encodeURIComponent(club.apiQuery)}`);
-        const data = await r.json();
-        if (data.error) throw new Error(data.error);
-        const team = data.team;
-        const players = data.players || [];
-        if (!team || players.length === 0) throw new Error("Réponse vide");
-        if (!cancelled) {
-          setLogosCache((prev) => ({ ...prev, [activeKey]: { logo: team.logo || null, coach: data.coach || null } }));
-          const mapped = players.map((p) => {
-            const cat = POS_MAP[p.position] || "MID";
-            return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
-              age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
-              contractEnd: contractFor(p.age || 25), verified: true,
-              onLoan: false, loanOA: false, loanedIn: false };
-          });
-          setSquad(mapped);
-          setDataSource("live");
-        }
-      } catch (err) {
-        if (!cancelled) { setLiveError(err.message || "Erreur inconnue"); setDataSource("demo"); }
-      }
+  useEffect(() => {
+    if (!authReady || !session || !activeKey) return;
+    if (freshLoadRef.current) {
+      loadFreshClub(activeKey);
+    } else {
+      setDataSource("saved");
     }
-    run();
-    return () => { cancelled = true; };
+    freshLoadRef.current = true;
   }, [activeKey, authReady, session]);
 
-  useEffect(() => {
-    if (squad.length === 0 || !authReady || !session) return;
+  const saveGame = async () => {
+    if (!activeKey) return;
     const payload = { squad, formation, transferBudget, dncgSold, marketPool, logo: logosCache[activeKey]?.logo || null, coach: logosCache[activeKey]?.coach || null,
       fixtures, table, transferLog, seasonResult, mercatoRevealed };
     try { localStorage.setItem(`ftm-save-${activeKey}`, JSON.stringify(payload)); } catch (e) {}
     if (session) {
-      sb.from("saves").upsert({ user_id: session.user.id, club_key: activeKey, data: payload, updated_at: new Date().toISOString() }).then(() => {});
+      await sb.from("saves").upsert({ user_id: session.user.id, club_key: activeKey, data: payload, updated_at: new Date().toISOString() });
     }
-  }, [squad, formation, transferBudget, dncgSold, marketPool, activeKey, session, authReady, logosCache, fixtures, table, transferLog, seasonResult, mercatoRevealed]);
+    setFlash("Partie sauvegardée.");
+  };
+
+  const openSavedGame = async (clubKey) => {
+    if (!session) return;
+    let saved = null;
+    try {
+      const { data } = await sb.from("saves").select("data").eq("user_id", session.user.id).eq("club_key", clubKey).maybeSingle();
+      if (data && data.data) saved = data.data;
+    } catch (e) {}
+    if (!saved) { setFlash("Sauvegarde introuvable."); return; }
+    freshLoadRef.current = false;
+    setSquad(saved.squad || []);
+    setFormation(saved.formation || "4-3-3");
+    setTransferBudget(saved.transferBudget ?? START_TRANSFER_BUDGET);
+    setDncgSold(saved.dncgSold ?? 0);
+    setMarketPool(saved.marketPool || MARKET_POOL);
+    setLogosCache((prev) => ({ ...prev, [clubKey]: { logo: saved.logo || null, coach: saved.coach || null } }));
+    setFixtures(saved.fixtures || makeFixtures(clubKey));
+    setTable(saved.table || makeTable(clubKey));
+    setTransferLog(saved.transferLog || []);
+    setSeasonResult(saved.seasonResult || null);
+    setMercatoRevealed(saved.mercatoRevealed || false);
+    setDataSource("saved");
+    setActiveKey(clubKey);
+    setShowAuth(false);
+    setView("squad");
+    setFlash("Partie chargée.");
+  };
+
+  useEffect(() => {
+    if (!club && view !== "home") setView("home");
+  }, [club, view]);
+
+  const restartGame = () => {
+    if (!activeKey) return;
+    loadFreshClub(activeKey);
+    setFlash("Partie redémarrée à zéro.");
+  };
 
   const refreshLive = async () => {
     setDataSource("loading");
@@ -516,12 +532,6 @@ function FaisTonMercato() {
     }
   };
 
-  const resetSave = async () => {
-    try { localStorage.removeItem(`ftm-save-${activeKey}`); } catch (e) {}
-    if (session) { try { await sb.from("saves").delete().eq("user_id", session.user.id).eq("club_key", activeKey); } catch (e) {} }
-    window.location.reload();
-  };
-
   const openDivision = async (div) => {
     setBrowseDivision(div); setHomeStage("clubs"); setBrowseLoading(true); setBrowseError(""); setClubsList([]);
     try {
@@ -535,8 +545,10 @@ function FaisTonMercato() {
   const openClub = (team) => {
     const curated = CLUBS.find((c) => c.matchNames.some((n) => team.name.toLowerCase().includes(n)));
     if (!curated) { setFlash(`${team.name} — bientôt jouable, reviens plus tard !`); return; }
+    freshLoadRef.current = true;
     setActiveKey(curated.id);
-    setHomeStage("root");
+    setHomeStage("country");
+    setBrowseCountry(null);
     setView("squad");
   };
 
@@ -554,6 +566,7 @@ function FaisTonMercato() {
   const onLoanList = useMemo(() => squad.filter((p) => p.onLoan), [squad]);
 
   const score = useMemo(() => {
+    if (!club) return { coverage: 0, budgetScore: 0, coherence: 0, quality: 0, hasValues: false, wageBill: 0, total: 0, partial: true, used: 0, avgAge: null };
     const filled = starters.filter((s) => s.player);
     const matches = filled.filter((s) => s.player.cat === s.slot.cat).length;
     const coverage = (matches / slots.length) * 25;
@@ -577,6 +590,7 @@ function FaisTonMercato() {
   }, [starters, bench, slots.length, club]);
 
   const realism = useMemo(() => {
+    if (!club) return { verifiedScore: 0, sizeScore: 0, spendScore: 0, diversityScore: 0, rivalPenalty: 0, rivalSignings: [], total: 0, verifiedPct: 0, squadSize: 0 };
     const all = squad.filter((p) => !p.onLoan);
     const n = all.length || 1;
     const verifiedPct = all.filter((p) => p.verified).length / n;
@@ -748,8 +762,11 @@ function FaisTonMercato() {
           {justConfirmed && <div className="ft-status live" style={{ marginBottom: 4 }}><Icon>🎉</Icon> Email confirmé — connecte-toi pour continuer.</div>}
           <div className="ft-auth-card">
             <div className="ft-modal-title">{authMode === "signin" ? "Se connecter" : "Créer un compte"}</div>
-            <input className="ft-modal-input" type="email" placeholder="Email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} />
-            <input className="ft-modal-input" type="password" placeholder="Mot de passe (6 caractères min.)" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} />
+            <input className="ft-modal-input" type="email" placeholder="Email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && doAuth()} />
+            <div className="ft-pw-wrap">
+              <input className="ft-modal-input" type={showPw ? "text" : "password"} placeholder="Mot de passe (6 caractères min.)" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && doAuth()} />
+              <span className="ft-pw-eye" onClick={() => setShowPw((v) => !v)}>{showPw ? "🙈" : "👁️"}</span>
+            </div>
             {authMsg && <div className="ft-row-sub" style={{ color: "var(--gold)", marginBottom: 8 }}>{authMsg}</div>}
             <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "10px 0", marginBottom: 8 }} disabled={authBusy} onClick={doAuth}>
               {authBusy ? "…" : authMode === "signin" ? "Se connecter" : "Créer le compte"}
@@ -770,9 +787,9 @@ function FaisTonMercato() {
     <div className="ft-root">
       <nav className="ft-nav">
         <button className={`ft-nav-btn ${view === "home" ? "ft-active" : ""}`} onClick={() => setView("home")}><Icon>🏠</Icon> Accueil</button>
-        <button className={`ft-nav-btn ${view === "squad" ? "ft-active" : ""}`} onClick={() => setView("squad")}><Icon>👕</Icon> Compositeur</button>
-        <button className={`ft-nav-btn ${view === "market" ? "ft-active" : ""}`} onClick={() => setView("market")}><Icon>🔁</Icon> Marché</button>
-        <button className={`ft-nav-btn ${view === "season" ? "ft-active" : ""}`} onClick={() => setView("season")}><Icon>📅</Icon> Saison</button>
+        <button className={`ft-nav-btn ${view === "squad" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("squad")}><Icon>👕</Icon> Compositeur</button>
+        <button className={`ft-nav-btn ${view === "market" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("market")}><Icon>🔁</Icon> Marché</button>
+        <button className={`ft-nav-btn ${view === "season" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("season")}><Icon>📅</Icon> Saison</button>
         <button className="ft-account-btn" onClick={() => { setShowAuth(true); loadMySaves(); }}><Icon>👤</Icon></button>
       </nav>
       {flash && <div className="ft-flash">{flash}</div>}
@@ -808,7 +825,7 @@ function FaisTonMercato() {
                   <div key={s.club_key} className="ft-row">
                     <div><div className="ft-row-name">{c ? c.name : s.club_key}</div><div className="ft-row-sub">Mise à jour : {new Date(s.updated_at).toLocaleDateString()}</div></div>
                     <div className="ft-row-actions">
-                      <button className="ft-mini-btn ft-buy" onClick={() => { setActiveKey(s.club_key); setShowAuth(false); setView("squad"); }}>Ouvrir</button>
+                      <button className="ft-mini-btn ft-buy" onClick={() => openSavedGame(s.club_key)}>Ouvrir</button>
                       <button className="ft-mini-btn ft-sell" onClick={() => deleteSave(s.club_key)}>Supprimer</button>
                     </div>
                   </div>
@@ -833,26 +850,32 @@ function FaisTonMercato() {
             <p>Choisis une division et prends les commandes d'un club</p>
           </div>
 
-          {homeStage === "root" && (
-            <div className="ft-division-list">
+          {homeStage === "country" && (
+            <div className="ft-grid">
               {COUNTRY_ORDER.map((country) => (
-                <div key={country} className="ft-division-row">
-                  <div className="ft-division-country">
-                    <img src={`https://flagcdn.com/w80/${COUNTRY_META[country].flagCode}.png`} alt="" />
-                    {COUNTRY_META[country].label}
-                  </div>
-                  <div className="ft-division-btns">
-                    {DIVISIONS.filter((d) => d.country === country).map((d) => (
-                      <button key={d.id} className="ft-division-btn" onClick={() => openDivision(d)}>{d.name}</button>
-                    ))}
-                  </div>
-                </div>
+                <button key={country} className="ft-club-card" onClick={() => { setBrowseCountry(country); setHomeStage("leagues"); }}>
+                  <img src={`https://flagcdn.com/w80/${COUNTRY_META[country].flagCode}.png`} alt="" style={{ width: 40, height: 28, objectFit: "cover", borderRadius: 3 }} />
+                  <span className="ft-club-name">{COUNTRY_META[country].label}</span>
+                </button>
               ))}
             </div>
           )}
 
+          {homeStage === "leagues" && (<>
+            <div className="ft-hint" style={{ cursor: "pointer" }} onClick={() => setHomeStage("country")}>← Retour aux pays</div>
+            <div className="ft-section-label"><span>{COUNTRY_META[browseCountry]?.label}</span></div>
+            <div className="ft-grid">
+              {DIVISIONS.filter((d) => d.country === browseCountry).map((d) => (
+                <button key={d.id} className="ft-club-card" onClick={() => openDivision(d)}>
+                  <div className="ft-crest" style={{ width: 40, height: 45, background: `linear-gradient(165deg, ${d.c1} 0%, ${d.c1} 55%, ${d.c2} 55%, ${d.c2} 100%)`, fontSize: 10 }}>{d.code}</div>
+                  <span className="ft-club-name">{d.name}</span>
+                </button>
+              ))}
+            </div>
+          </>)}
+
           {homeStage === "clubs" && (<>
-            <div className="ft-hint" style={{ cursor: "pointer" }} onClick={() => setHomeStage("root")}>← Retour aux divisions</div>
+            <div className="ft-hint" style={{ cursor: "pointer" }} onClick={() => setHomeStage("leagues")}>← Retour aux ligues</div>
             <div className="ft-section-label"><span>{browseDivision?.name}</span></div>
             {browseLoading && <Skeleton />}
             {browseError && <div className="ft-row-sub">{browseError}</div>}
@@ -873,7 +896,7 @@ function FaisTonMercato() {
           </>)}
         </>)}
 
-        {view === "squad" && (<>
+        {view === "squad" && club && (<>
           <div className="ft-head">
             <ClubCrest club={club} size={44} logoUrl={logosCache[activeKey]?.logo} />
             <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach || logosCache[activeKey]?.coach || "inconnu"}</div></div>
@@ -943,7 +966,7 @@ function FaisTonMercato() {
           </>)}
         </>)}
 
-        {view === "market" && (<>
+        {view === "market" && club && (<>
           {club.dncg && (
             <div className={`ft-dncg ${dncgDone ? "ft-dncg-done" : ""}`}>
               <Icon>{dncgDone ? "✅" : "⚠️"}</Icon>
@@ -1034,7 +1057,7 @@ function FaisTonMercato() {
           </>)}
         </>)}
 
-        {view === "season" && fixtures && table && (<>
+        {view === "season" && club && fixtures && table && (<>
           <div className="ft-board">
             <div className="ft-board-obj"><Icon>🎯</Icon> Objectif indicatif : {BOARD_OBJECTIVES[activeKey] || "assurer le maintien"}</div>
           </div>
@@ -1072,7 +1095,8 @@ function FaisTonMercato() {
         <div className="ft-footnote">
           <Icon>ℹ️</Icon> Valeurs et salaires estimés (âge/poste) — pas des données officielles.
           {view === "squad" && <span className="ft-reset-link" style={{ marginLeft: "auto" }} onClick={refreshLive}>actualiser</span>}
-          {view === "squad" && <span className="ft-reset-link" onClick={resetSave}>réinitialiser</span>}
+          {view === "squad" && <span className="ft-reset-link" onClick={saveGame}>💾 sauvegarder</span>}
+          {view === "squad" && <span className="ft-reset-link" onClick={restartGame}>recommencer</span>}
         </div>
       </div>
     </div>
@@ -1125,6 +1149,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-modal-input { width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--chalk); border-radius:8px;
     padding:9px 10px; font-size:12px; margin-bottom:8px; font-family:'Inter',sans-serif; }
   .ft-modal-close { position:absolute; top:14px; right:16px; cursor:pointer; color:var(--muted); font-size:14px; }
+  .ft-pw-wrap { position:relative; }
+  .ft-pw-wrap .ft-modal-input { padding-right:34px; }
+  .ft-pw-eye { position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:13px; user-select:none; }
 
   .ft-crest { border-radius:4px; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Anton',sans-serif;
     letter-spacing:0.2px; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,0.5); text-align:center; line-height:1; }
