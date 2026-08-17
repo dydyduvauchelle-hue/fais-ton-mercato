@@ -20,18 +20,24 @@ module.exports = async (req, res) => {
   try {
     const headers = { "x-apisports-key": API_KEY };
     let teamObj;
+    let rl = null;
+    const readRL = (r) => ({ remaining: r.headers.get("x-ratelimit-requests-remaining"), limit: r.headers.get("x-ratelimit-requests-limit") });
 
     if (teamId) {
       const r = await fetch(`https://v3.football.api-sports.io/teams?id=${encodeURIComponent(teamId)}`, { headers });
+      rl = readRL(r);
+      if (r.status === 429) { res.status(429).json({ error: "Quota API épuisé pour aujourd'hui (429).", rateLimit: rl }); return; }
       const d = await r.json();
       teamObj = d?.response?.[0]?.team;
     } else {
       const r = await fetch(`https://v3.football.api-sports.io/teams?name=${encodeURIComponent(teamName)}`, { headers });
+      rl = readRL(r);
+      if (r.status === 429) { res.status(429).json({ error: "Quota API épuisé pour aujourd'hui (429).", rateLimit: rl }); return; }
       const d = await r.json();
       teamObj = d?.response?.[0]?.team;
     }
     if (!teamObj) {
-      res.status(404).json({ error: "Équipe introuvable dans la réponse API-Football." });
+      res.status(404).json({ error: "Équipe introuvable dans la réponse API-Football.", rateLimit: rl });
       return;
     }
 
@@ -39,13 +45,15 @@ module.exports = async (req, res) => {
       fetch(`https://v3.football.api-sports.io/players/squads?team=${teamObj.id}`, { headers }),
       fetch(`https://v3.football.api-sports.io/coachs?team=${teamObj.id}`, { headers }),
     ]);
+    rl = readRL(squadRes);
+    if (squadRes.status === 429) { res.status(429).json({ error: "Quota API épuisé pour aujourd'hui (429).", rateLimit: rl }); return; }
     const squadData = await squadRes.json();
     const coachData = await coachRes.json();
     const players = squadData?.response?.[0]?.players || [];
     const coach = coachData?.response?.[0]?.name || null;
 
     res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate");
-    res.status(200).json({ team: teamObj, players, coach });
+    res.status(200).json({ team: teamObj, players, coach, rateLimit: rl });
   } catch (err) {
     res.status(500).json({ error: err.message || "Erreur serveur inconnue." });
   }

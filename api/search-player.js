@@ -10,12 +10,15 @@ module.exports = async (req, res) => {
 
   try {
     const headers = { "x-apisports-key": API_KEY };
-    const seasons = [2026, 2025, 2024, 2023, 2022, 2021];
+    const seasons = [2025, 2024, 2023];
     let results = [];
     let seasonUsed = null;
+    let rateLimit = null;
 
     for (const season of seasons) {
       const r = await fetch(`https://v3.football.api-sports.io/players?search=${encodeURIComponent(q)}&season=${season}`, { headers });
+      rateLimit = { remaining: r.headers.get("x-ratelimit-requests-remaining"), limit: r.headers.get("x-ratelimit-requests-limit") };
+      if (r.status === 429) { res.status(429).json({ error: "Quota API épuisé pour aujourd'hui (429).", rateLimit }); return; }
       const data = await r.json();
       if (data?.response?.length) { results = data.response; seasonUsed = season; break; }
     }
@@ -34,7 +37,7 @@ module.exports = async (req, res) => {
     });
 
     res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate");
-    res.status(200).json({ results: mapped, seasonUsed });
+    res.status(200).json({ results: mapped, seasonUsed, rateLimit });
   } catch (err) {
     res.status(500).json({ error: err.message || "Erreur serveur inconnue." });
   }

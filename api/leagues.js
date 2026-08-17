@@ -8,6 +8,8 @@ module.exports = async (req, res) => {
   try {
     const headers = { "x-apisports-key": API_KEY };
     const r = await fetch(`https://v3.football.api-sports.io/leagues?country=${encodeURIComponent(country)}`, { headers });
+    const rateLimit = { remaining: r.headers.get("x-ratelimit-requests-remaining"), limit: r.headers.get("x-ratelimit-requests-limit") };
+    if (r.status === 429) { res.status(429).json({ error: "Quota API épuisé pour aujourd'hui (429).", rateLimit }); return; }
     const data = await r.json();
 
     const leagues = (data.response || [])
@@ -16,7 +18,7 @@ module.exports = async (req, res) => {
       .slice(0, 8);
 
     res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate");
-    res.status(200).json({ leagues });
+    res.status(200).json({ leagues, rateLimit });
   } catch (err) {
     res.status(500).json({ error: err.message || "Erreur serveur inconnue." });
   }

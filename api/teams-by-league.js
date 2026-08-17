@@ -7,13 +7,16 @@ module.exports = async (req, res) => {
 
   try {
     const headers = { "x-apisports-key": API_KEY };
-    const seasons = [2026, 2025, 2024, 2023];
+    const seasons = [2026, 2025];
     let teams = [];
     let seasonUsed = null;
+    let lastRateLimit = null;
 
     for (const season of seasons) {
       const r = await fetch(`https://v3.football.api-sports.io/teams?league=${encodeURIComponent(league)}&season=${season}`, { headers });
+      lastRateLimit = { remaining: r.headers.get("x-ratelimit-requests-remaining"), limit: r.headers.get("x-ratelimit-requests-limit") };
       const data = await r.json();
+      if (data?.errors && Object.keys(data.errors).length) { teams = []; teams.__error = JSON.stringify(data.errors); }
       if (data?.response?.length) {
         teams = data.response.map((x) => ({ id: x.team.id, name: x.team.name, logo: x.team.logo }));
         seasonUsed = season;
@@ -22,7 +25,7 @@ module.exports = async (req, res) => {
     }
 
     res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate");
-    res.status(200).json({ teams, seasonUsed });
+    res.status(200).json({ teams, seasonUsed, apiErrors: teams.__error || null, rateLimit: lastRateLimit });
   } catch (err) {
     res.status(500).json({ error: err.message || "Erreur serveur inconnue." });
   }

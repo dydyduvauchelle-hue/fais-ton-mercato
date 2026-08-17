@@ -30,11 +30,11 @@ const CLUBS = [
 ];
 
 const COUNTRIES = [
-  { code: "France", label: "France", flag: "🇫🇷" },
-  { code: "England", label: "Angleterre", flag: "🏴" },
-  { code: "Germany", label: "Allemagne", flag: "🇩🇪" },
-  { code: "Spain", label: "Espagne", flag: "🇪🇸" },
-  { code: "Italy", label: "Italie", flag: "🇮🇹" },
+  { code: "France", label: "France", flagCode: "fr" },
+  { code: "England", label: "Angleterre", flagCode: "gb-eng" },
+  { code: "Germany", label: "Allemagne", flagCode: "de" },
+  { code: "Spain", label: "Espagne", flagCode: "es" },
+  { code: "Italy", label: "Italie", flagCode: "it" },
 ];
 
 const FALLBACK_SQUADS = {
@@ -194,6 +194,7 @@ function FaisTonMercato() {
   const [dataSource, setDataSource] = useState("loading");
   const [logosCache, setLogosCache] = useState({});
   const [liveError, setLiveError] = useState("");
+  const [quotaInfo, setQuotaInfo] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -221,6 +222,7 @@ function FaisTonMercato() {
         const url = club.apiTeamId ? `/api/squad?teamId=${club.apiTeamId}` : `/api/squad?team=${encodeURIComponent(club.apiQuery)}`;
         const r = await fetch(url);
         const data = await r.json();
+        if (data.rateLimit) setQuotaInfo(data.rateLimit);
         if (data.error) throw new Error(data.error);
         const team = data.team;
         const players = data.players || [];
@@ -258,13 +260,12 @@ function FaisTonMercato() {
     window.location.reload();
   };
 
-  const openFeatured = (id) => { setDynamicClub(null); setActiveKey(id); setView("squad"); };
-
   const openCountry = async (code) => {
     setBrowseCountry(code); setHomeStage("leagues"); setBrowseLoading(true); setBrowseError(""); setLeaguesList([]);
     try {
       const r = await fetch(`/api/leagues?country=${encodeURIComponent(code)}`);
       const data = await r.json();
+      if (data.rateLimit) setQuotaInfo(data.rateLimit);
       if (data.error) throw new Error(data.error);
       setLeaguesList(data.leagues || []);
       if (!data.leagues || data.leagues.length === 0) setBrowseError("Aucune division trouvée pour ce pays.");
@@ -276,6 +277,7 @@ function FaisTonMercato() {
     try {
       const r = await fetch(`/api/teams-by-league?league=${league.id}`);
       const data = await r.json();
+      if (data.rateLimit) setQuotaInfo(data.rateLimit);
       if (data.error) throw new Error(data.error);
       setClubsList(data.teams || []);
       if (!data.teams || data.teams.length === 0) setBrowseError("Aucun club trouvé pour cette division.");
@@ -283,11 +285,17 @@ function FaisTonMercato() {
   };
 
   const openBrowsedClub = (team) => {
-    setDynamicClub({
-      id: `t${team.id}`, name: team.name, code: team.name.slice(0, 4).toUpperCase(),
-      c1: "#1C2C5B", c2: "#FFFFFF", coach: null, salaryCap: 25, apiTeamId: team.id,
-    });
-    setActiveKey(`t${team.id}`);
+    const curated = CLUBS.find((c) => team.name.toLowerCase().includes(c.name.toLowerCase().split(" ").pop().toLowerCase()));
+    if (curated) {
+      setDynamicClub(null);
+      setActiveKey(curated.id);
+    } else {
+      setDynamicClub({
+        id: `t${team.id}`, name: team.name, code: team.name.slice(0, 4).toUpperCase(),
+        c1: "#1C2C5B", c2: "#FFFFFF", coach: null, salaryCap: 25, apiTeamId: team.id,
+      });
+      setActiveKey(`t${team.id}`);
+    }
     setHomeStage("root");
     setView("squad");
   };
@@ -379,6 +387,7 @@ function FaisTonMercato() {
     try {
       const r = await fetch(`/api/search-player?q=${encodeURIComponent(searchQuery.trim())}`);
       const data = await r.json();
+      if (data.rateLimit) setQuotaInfo(data.rateLimit);
       if (data.error) throw new Error(data.error);
       setSearchResults(data.results || []);
       if (!data.results || data.results.length === 0) setFlash("Aucune correspondance trouvée dans l'API (plan gratuit limité en saisons).");
@@ -443,22 +452,11 @@ function FaisTonMercato() {
           </div>
 
           {homeStage === "root" && (<>
-            <div className="ft-section-label"><span>Clubs à la une</span></div>
-            <div className="ft-grid">
-              {CLUBS.map((c) => (
-                <button key={c.id} className="ft-club-card" onClick={() => openFeatured(c.id)}>
-                  <ClubCrest club={c} size={40} logoUrl={logosCache[c.id]?.logo} />
-                  <span className="ft-club-name">{c.name}</span>
-                  <span className="ft-soon">{c.league}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="ft-section-label"><span>Parcourir par pays</span></div>
+            <div className="ft-section-label"><span>Choisis un pays</span></div>
             <div className="ft-grid">
               {COUNTRIES.map((co) => (
                 <button key={co.code} className="ft-club-card" onClick={() => openCountry(co.code)}>
-                  <div className="ft-hero-mark" style={{ fontSize: 28 }}>{co.flag}</div>
+                  <img src={`https://flagcdn.com/w80/${co.flagCode}.png`} alt="" style={{ width: 40, height: 28, objectFit: "cover", borderRadius: 3 }} />
                   <span className="ft-club-name">{co.label}</span>
                 </button>
               ))}
@@ -498,7 +496,7 @@ function FaisTonMercato() {
         {view === "squad" && (<>
           <div className="ft-head">
             <ClubCrest club={club} size={44} logoUrl={logosCache[activeKey]?.logo} />
-            <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {logosCache[activeKey]?.coach || club.coach || "inconnu"}</div></div>
+            <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach || logosCache[activeKey]?.coach || "inconnu (donnée API limitée)"}</div></div>
             <div className="ft-formations">
               {Object.keys(FORMATIONS).map((f) => (
                 <button key={f} className={`ft-fbtn ${f === formation ? "ft-fbtn-active" : ""}`} onClick={() => setFormation(f)}>{f}</button>
@@ -629,6 +627,12 @@ function FaisTonMercato() {
           </>)}
         </>)}
 
+        {quotaInfo && quotaInfo.remaining != null && (
+          <div className={`ft-status ${Number(quotaInfo.remaining) < 15 ? "demo" : "loading"}`}>
+            <Icon>🎯</Icon> Quota API restant aujourd'hui : {quotaInfo.remaining} / {quotaInfo.limit}
+            {Number(quotaInfo.remaining) < 15 && " — presque épuisé, les prochains chargements vont échouer."}
+          </div>
+        )}
         <div className="ft-footnote"><Icon>ℹ️</Icon> {dataSource === "live" ? "Effectif et logo en direct depuis API-Football. Valeurs et salaires estimés (âge/poste) — pas des données officielles." : "Repli sur des données saisies à la main."}</div>
       </div>
     </div>
