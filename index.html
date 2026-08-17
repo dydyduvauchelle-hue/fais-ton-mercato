@@ -9,6 +9,7 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   body { margin:0; padding:24px 12px; background:#05080a; }
   #root { display:flex; justify-content:center; }
@@ -99,6 +100,10 @@ const FALLBACK_SQUADS = {
     { id: "f3", name: "Désiré Doué", num: 14, cat: "FWD", pos: "Ailier", age: 20, value: 60 },
     { id: "f4", name: "Ferran Torres", num: 11, cat: "FWD", pos: "Avant-centre", age: 25, value: 38 },
     { id: "f5", name: "Mika Godts", num: 21, cat: "FWD", pos: "Ailier gauche", age: 19, value: 22 },
+    { id: "m6", name: "Senny Mayulu", num: 20, cat: "MID", pos: "Milieu offensif", age: 19, value: 25 },
+    { id: "f6", name: "Ibrahim Mbaye", num: 30, cat: "FWD", pos: "Ailier", age: 18, value: 15 },
+    { id: "d7", name: "Yoram Zague", num: 32, cat: "DEF", pos: "Arrière droit", age: 19, value: 12 },
+    { id: "m7", name: "Noham Kamara", num: 34, cat: "MID", pos: "Milieu central", age: 18, value: 10 },
   ],
   barca: [
     { id: "gk1", name: "Joan García", num: 13, cat: "GK", pos: "Gardien", age: 25, value: 30 },
@@ -119,6 +124,10 @@ const FALLBACK_SQUADS = {
     { id: "f3", name: "Karim Adeyemi", num: 9, cat: "FWD", pos: "Ailier", age: 24, value: 40 },
     { id: "f4", name: "Hamza Abdelkarim", num: 32, cat: "FWD", pos: "Attaquant", age: 19, value: 15 },
     { id: "f5", name: "Jesse Bisiwu", num: 45, cat: "FWD", pos: "Attaquant", age: 20, value: 20 },
+    { id: "m6", name: "Marc Casado", num: 17, cat: "MID", pos: "Milieu défensif", age: 22, value: 20 },
+    { id: "d7", name: "Gerard Martín", num: 25, cat: "DEF", pos: "Arrière gauche", age: 23, value: 15 },
+    { id: "d8", name: "Héctor Fort", num: 34, cat: "DEF", pos: "Arrière droit", age: 19, value: 12 },
+    { id: "f6", name: "Toni Fernández", num: 39, cat: "FWD", pos: "Attaquant", age: 19, value: 8 },
   ],
   arsenal: [
     { id: "gk1", name: "David Raya", num: 1, cat: "GK", pos: "Gardien", age: 30, value: 35 },
@@ -139,6 +148,10 @@ const FALLBACK_SQUADS = {
     { id: "f4", name: "Eberechi Eze", num: 10, cat: "FWD", pos: "Milieu offensif", age: 28, value: 60 },
     { id: "f5", name: "Noni Madueke", num: 20, cat: "FWD", pos: "Ailier", age: 24, value: 40 },
     { id: "f6", name: "Christos Tzolis", num: 19, cat: "FWD", pos: "Ailier", age: 23, value: 30 },
+    { id: "d6", name: "Ben White", num: 4, cat: "DEF", pos: "Défenseur central", age: 28, value: 45 },
+    { id: "d7", name: "Takehiro Tomiyasu", num: 18, cat: "DEF", pos: "Arrière droit", age: 27, value: 25 },
+    { id: "m6", name: "Fabio Vieira", num: 21, cat: "MID", pos: "Milieu offensif", age: 26, value: 20 },
+    { id: "f7", name: "Reiss Nelson", num: 24, cat: "FWD", pos: "Ailier", age: 26, value: 15 },
   ],
 };
 
@@ -608,6 +621,8 @@ function FaisTonMercato() {
     setView("squad");
   };
 
+  useEffect(() => { setAssignment(assignSlots(squad, formation)); setSelected(null); }, [formation, squad]);
+
   const slots = FORMATIONS[formation];
   const handleSelect = (id) => {
     if (!selected) return setSelected(id);
@@ -802,6 +817,66 @@ function FaisTonMercato() {
   const filteredMarket = marketPool.filter((p) => p.name.toLowerCase().includes(marketSearch.toLowerCase()));
   const dncgDone = dncgSold >= DNCG_TARGET;
 
+  const globalAvg = (score.total + realism.total) / 2;
+  const dsTitle = globalAvg >= 85 ? "Directeur Sportif de légende 🏆" : globalAvg >= 70 ? "Direction sportive solide 👔" : globalAvg >= 50 ? "Mercato correct, peut mieux faire 📋" : "Mercato chaotique 🔥";
+
+  const trophies = useMemo(() => {
+    if (!club) return [];
+    const all = squad.filter((p) => !p.onLoan);
+    const list = [];
+    const withAge = all.filter((p) => p.age);
+    const avgAge = withAge.length ? withAge.reduce((s, p) => s + p.age, 0) / withAge.length : 99;
+    if (avgAge <= 24) list.push({ icon: "🕵️", label: "Chasseur de pépites", desc: "Âge moyen de l'effectif ≤ 24 ans" });
+    if (club.dncg && score.hasValues && score.used <= club.valueCap * 0.9) list.push({ icon: "💰", label: "Petit budget, grand cœur", desc: "Effectif construit bien en dessous du plafond malgré la DNCG" });
+    if (realism.rivalPenalty === 0) list.push({ icon: "🤝", label: "Aucun rival signé", desc: "Pas de transfert improbable avec un rival historique" });
+    if (realism.verifiedPct === 1 && all.length > 0) list.push({ icon: "✅", label: "100% vérifié", desc: "Tout l'effectif vient de vraies données, aucun joueur fictif" });
+    if (realism.diversityScore >= 18) list.push({ icon: "⚖️", label: "Effectif équilibré", desc: "Répartition des postes proche d'un vrai groupe pro" });
+    if (score.coverage >= 25) list.push({ icon: "🎯", label: "Postes couverts à 100%", desc: "Les 11 titulaires jouent tous à leur poste" });
+    if (dncgDone && club.dncg) list.push({ icon: "🧾", label: "DNCG respectée", desc: "Objectif de cession de 80M€ atteint" });
+    return list;
+  }, [squad, club, score, realism, dncgDone]);
+
+  const downloadCard = async () => {
+    const node = document.getElementById("share-card");
+    if (!node || !window.html2canvas) { setFlash("Génération de l'image indisponible."); return; }
+    try {
+      const canvas = await window.html2canvas(node, { backgroundColor: "#0A0E12", scale: 2 });
+      const link = document.createElement("a");
+      link.download = `mon-mercato-${club.code}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (e) { setFlash("Échec de la génération de l'image."); }
+  };
+
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
+  const submitToLeaderboard = async () => {
+    if (!session || !club) return;
+    const name = session.user.user_metadata?.full_name || session.user.email.split("@")[0];
+    try {
+      await sb.from("leaderboard").upsert({
+        user_id: session.user.id, club_key: activeKey, display_name: name,
+        mercato_score: Math.round(score.total), realism_score: Math.round(realism.total),
+        global_avg: Math.round(globalAvg), updated_at: new Date().toISOString(),
+      });
+    } catch (e) {}
+  };
+
+  const loadLeaderboard = async () => {
+    if (!club) return;
+    setLeaderboardLoading(true); setShowLeaderboard(true);
+    try {
+      const { data } = await sb.from("leaderboard").select("*").eq("club_key", activeKey).order("global_avg", { ascending: false }).limit(10);
+      setLeaderboard(data || []);
+    } catch (e) {} finally { setLeaderboardLoading(false); }
+  };
+
+  useEffect(() => {
+    if (mercatoRevealed && club) submitToLeaderboard();
+  }, [mercatoRevealed]);
+
   if (!authReady) {
     return <div className="ft-root ft-auth-loading"><Icon size={22}>⚽</Icon></div>;
   }
@@ -984,7 +1059,7 @@ function FaisTonMercato() {
           <div className="ft-hint"><Icon>⇄</Icon> Cliquez un titulaire puis un joueur du banc ou de la réserve pour les échanger.</div>
           <div className="ft-section-label"><span>Banc</span><span>{bench.length}/{BENCH_SIZE}</span></div>
           <div className="ft-bench-row">{bench.map((p) => <Chip key={p.id} player={p} size="sm" />)}</div>
-          <div className="ft-section-label"><span>Réserve</span><span>{reserve.length} · illimitée</span></div>
+          <div className="ft-section-label"><span>Réserve</span></div>
           <div className="ft-reserve">
             {reserve.map((p) => (
               <div key={p.id} className={`ft-res-pill ${selected === p.id ? "ft-chip-sel" : ""}`} onClick={() => handleSelect(p.id)}>
@@ -1020,6 +1095,56 @@ function FaisTonMercato() {
               <Bar label="Répartition des postes" value={realism.diversityScore} max={20} />
               {realism.rivalPenalty > 0 && <div className="ft-row-sub" style={{ color: "var(--coral)" }}>⚠️ -{realism.rivalPenalty} pts : {realism.rivalSignings.map((p) => p.name).join(", ")} vien{realism.rivalSignings.length > 1 ? "nent" : "t"} d'un rival historique (rarissime en vrai).</div>}
             </div>
+
+            {trophies.length > 0 && (
+              <div className="ft-trophies">
+                {trophies.map((t) => (
+                  <div key={t.label} className="ft-trophy" title={t.desc}>
+                    <span className="ft-trophy-icon">{t.icon}</span>
+                    <span className="ft-trophy-label">{t.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div id="share-card" className="ft-share-card">
+              <div className="ft-share-head">
+                <ClubCrest club={club} size={40} logoUrl={logosCache[activeKey]?.logo} />
+                <div>
+                  <div className="ft-share-club">{club.name}</div>
+                  <div className="ft-share-sub">Mercato 2026-2027 · {formation}</div>
+                </div>
+              </div>
+              <div className="ft-share-title">{dsTitle}</div>
+              <div className="ft-share-scores">
+                <div className="ft-share-score-box"><div className="ft-share-score-num">{Math.round(score.total)}</div><div className="ft-share-score-label">Note mercato</div></div>
+                <div className="ft-share-score-box"><div className="ft-share-score-num">{Math.round(realism.total)}</div><div className="ft-share-score-label">Réalisme</div></div>
+              </div>
+              <div className="ft-share-xi">
+                {starters.filter((s) => s.player).map(({ player }) => (
+                  <div key={player.id} className="ft-share-player">
+                    <span className="ft-share-num" style={{ background: club.c1, color: club.c2 }}>{player.num}</span>
+                    {shortName(player.name)}
+                  </div>
+                ))}
+              </div>
+              <div className="ft-share-footer">⚽ Fais ton Mercato</div>
+            </div>
+            <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "10px 0" }} onClick={downloadCard}>📸 Télécharger ma carte</button>
+            <button className="ft-mini-btn" style={{ width: "100%", padding: "10px 0", marginTop: 6 }} onClick={loadLeaderboard}>🏅 Voir le classement {club.name}</button>
+
+            {showLeaderboard && (
+              <div className="ft-table" style={{ marginTop: 10 }}>
+                <div className="ft-table-head"><span>#</span><span>Joueur</span><span>Réal.</span><span>Score</span></div>
+                {leaderboardLoading && <div className="ft-row-sub" style={{ padding: 8 }}>Chargement…</div>}
+                {!leaderboardLoading && leaderboard.length === 0 && <div className="ft-row-sub" style={{ padding: 8 }}>Personne pour l'instant — sois le premier !</div>}
+                {!leaderboardLoading && leaderboard.map((row, i) => (
+                  <div key={row.user_id} className={`ft-table-row ${session && row.user_id === session.user.id ? "ft-table-self" : ""}`}>
+                    <span>{i + 1}</span><span>{row.display_name}</span><span>{row.realism_score}</span><span>{row.global_avg}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="ft-reset-link" style={{ textAlign: "center", marginTop: 4 }} onClick={() => setMercatoRevealed(false)}>← Continuer à modifier mon mercato</div>
           </>)}
@@ -1357,6 +1482,26 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-flash { position:sticky; top:0; z-index:5; background:var(--gold); color:var(--ink); font-size:11.5px; font-weight:600;
     padding:8px 14px; text-align:center; animation: ftFadeIn .2s ease; }
   .ft-footnote { display:flex; gap:6px; font-size:10.5px; color:var(--muted); margin-top:14px; line-height:1.4; }
+
+  .ft-share-card { background:linear-gradient(160deg, var(--panel) 0%, var(--ink) 100%); border:1px solid var(--line);
+    border-radius:16px; padding:20px; margin:16px 0 10px; }
+  .ft-share-head { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+  .ft-share-club { font-family:'Anton',sans-serif; font-size:17px; line-height:1; }
+  .ft-share-sub { font-size:10px; color:var(--muted); margin-top:2px; }
+  .ft-share-title { font-family:'Anton',sans-serif; font-size:14px; color:var(--gold); text-align:center; margin:10px 0 14px; }
+  .ft-share-scores { display:flex; gap:10px; margin-bottom:16px; }
+  .ft-share-score-box { flex:1; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:10px; text-align:center; }
+  .ft-share-score-num { font-family:'Anton',sans-serif; font-size:26px; color:var(--chalk); }
+  .ft-share-score-label { font-family:'IBM Plex Mono',monospace; font-size:8.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
+  .ft-share-xi { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:14px; }
+  .ft-share-player { display:flex; align-items:center; gap:6px; font-size:10.5px; background:var(--panel-2); border-radius:6px; padding:5px 8px; }
+  .ft-share-num { width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-size:8px; font-weight:700; flex-shrink:0; }
+  .ft-share-footer { text-align:center; font-family:'Anton',sans-serif; font-size:11px; color:var(--muted); letter-spacing:0.05em; }
+  .ft-trophies { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .ft-trophy { display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--gold); border-radius:20px;
+    padding:6px 12px 6px 8px; font-size:10.5px; font-weight:600; cursor:help; }
+  .ft-trophy-icon { font-size:14px; }
 
   .ft-tag-fictif { font-family:'IBM Plex Mono',monospace; font-size:8px; background:rgba(244,247,241,0.12); color:var(--muted);
     border-radius:5px; padding:1px 5px; margin-left:5px; }
