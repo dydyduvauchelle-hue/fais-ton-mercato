@@ -36,22 +36,22 @@ const CLUBS = [
   {
     id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545",
     apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55, valueCap: 230, dncg: true,
-    matchNames: ["marseille"],
+    matchNames: ["marseille"], leagueId: 61,
   },
   {
     id: "psg", name: "Paris Saint-Germain", code: "PSG", c1: "#041E42", c2: "#DA291C",
     apiQuery: "Paris Saint Germain", coach: "Luis Enrique", salaryCap: 180, valueCap: 900, dncg: false,
-    matchNames: ["paris saint", "psg"],
+    matchNames: ["paris saint", "psg"], leagueId: 61,
   },
   {
     id: "barca", name: "FC Barcelone", code: "FCB", c1: "#A50044", c2: "#004D98",
     apiQuery: "Barcelona", coach: "Hansi Flick", salaryCap: 190, valueCap: 950, dncg: false,
-    matchNames: ["barcelona", "barcelone"],
+    matchNames: ["barcelona", "barcelone"], leagueId: 140,
   },
   {
     id: "arsenal", name: "Arsenal FC", code: "ARS", c1: "#EF0107", c2: "#023474",
     apiQuery: "Arsenal", coach: "Mikel Arteta", salaryCap: 195, valueCap: 980, dncg: false,
-    matchNames: ["arsenal"],
+    matchNames: ["arsenal"], leagueId: 39,
   },
 ];
 
@@ -113,6 +113,7 @@ const FALLBACK_SQUADS = {
     { id: "m2", name: "Gavi", num: 6, cat: "MID", pos: "Milieu central", age: 22, value: 55 },
     { id: "m3", name: "Dani Olmo", num: 21, cat: "MID", pos: "Milieu offensif", age: 28, value: 50 },
     { id: "m4", name: "Fermín López", num: 16, cat: "MID", pos: "Milieu offensif", age: 23, value: 45 },
+    { id: "m5", name: "Rodri", num: 22, cat: "MID", pos: "Milieu défensif", age: 30, value: 95, contractEnd: 2030 },
     { id: "f1", name: "Lamine Yamal", num: 10, cat: "FWD", pos: "Ailier droit", age: 19, value: 180 },
     { id: "f2", name: "Anthony Gordon", num: 27, cat: "FWD", pos: "Ailier gauche", age: 25, value: 45 },
     { id: "f3", name: "Karim Adeyemi", num: 9, cat: "FWD", pos: "Ailier", age: 24, value: 40 },
@@ -583,13 +584,19 @@ function FaisTonMercato() {
 
   const openDivision = async (div) => {
     setBrowseDivision(div); setHomeStage("clubs"); setBrowseLoading(true); setBrowseError(""); setClubsList([]);
+    const curatedFallback = () => CLUBS.filter((c) => c.leagueId === div.id).map((c) => ({ id: c.id, name: c.name, logo: null }));
     try {
       const r = await fetch(`/api/teams-by-league?league=${div.id}`);
       const data = await r.json();
-      if (data.error) throw new Error(data.error);
-      setClubsList(data.teams || []);
-      if (!data.teams || data.teams.length === 0) setBrowseError("Aucun club trouvé pour cette division pour le moment.");
-    } catch (err) { setBrowseError(err.message); } finally { setBrowseLoading(false); }
+      if (data.error || !data.teams || data.teams.length === 0) throw new Error("indisponible");
+      setClubsList(data.teams);
+    } catch (err) {
+      const fb = curatedFallback();
+      setClubsList(fb);
+      setBrowseError(fb.length > 0
+        ? "Mode test — API-Football indisponible, clubs préparés à l'avance affichés en attendant (à retirer une fois reconnecté)."
+        : "Aucun club disponible pour cette division pour le moment.");
+    } finally { setBrowseLoading(false); }
   };
   const openClub = (team) => {
     const curated = CLUBS.find((c) => c.matchNames.some((n) => team.name.toLowerCase().includes(n)));
