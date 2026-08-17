@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
     for (const season of seasons) {
       const r = await fetch(`https://v3.football.api-sports.io/players?search=${encodeURIComponent(q)}&season=${season}`, { headers });
       rateLimit = { remaining: r.headers.get("x-ratelimit-requests-remaining"), limit: r.headers.get("x-ratelimit-requests-limit") };
-      if (r.status === 429) { res.status(429).json({ error: "Quota API épuisé pour aujourd'hui (429).", rateLimit }); return; }
+      if (r.status === 429) { res.status(429).json({ error: "Service momentanément indisponible, réessaie dans un instant.", rateLimit }); return; }
       const data = await r.json();
       if (data?.response?.length) { results = data.response; seasonUsed = season; break; }
     }

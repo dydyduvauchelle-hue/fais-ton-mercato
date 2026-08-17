@@ -8,6 +8,7 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   body { margin:0; padding:24px 12px; background:#05080a; }
   #root { display:flex; justify-content:center; }
@@ -19,22 +20,29 @@
 <script type="text/babel">
 const { useState, useEffect, useMemo } = React;
 
+const SUPABASE_URL = "https://avjlewtkrlvvtmtnioqi.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2amxld3Rrcmx2dnRtdG5pb3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NTEzMjcsImV4cCI6MjEwMjUyNzMyN30.6phgvPTJLtv3UEBz7XtiZXyPTKA-S6hYcLx9jz1eSAw";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const Icon = ({ children, size = 14 }) => (
   <span style={{ fontSize: size, lineHeight: 1, display: "inline-flex" }}>{children}</span>
 );
 
 /* ------------------------------------------------------------------ */
+/* Seuls l'OM et le PSG sont jouables pour l'instant (effectif réel +   */
+/* budget/masse salariale propres à chaque club).                      */
+/* ------------------------------------------------------------------ */
 const CLUBS = [
-  { id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545", active: true, star: true, league: "Ligue 1", apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55 },
-  { id: "usbco", name: "US Boulogne Côte d'Opale", code: "USBCO", c1: "#C8102E", c2: "#000000", active: true, league: "Ligue 2", apiQuery: "Boulogne", coach: "Fabien Dagneaux", salaryCap: 8 },
-];
-
-const COUNTRIES = [
-  { code: "France", label: "France", flagCode: "fr" },
-  { code: "England", label: "Angleterre", flagCode: "gb-eng" },
-  { code: "Germany", label: "Allemagne", flagCode: "de" },
-  { code: "Spain", label: "Espagne", flagCode: "es" },
-  { code: "Italy", label: "Italie", flagCode: "it" },
+  {
+    id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545",
+    apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55, valueCap: 230, dncg: true,
+    matchNames: ["marseille"],
+  },
+  {
+    id: "psg", name: "Paris Saint-Germain", code: "PSG", c1: "#041E42", c2: "#DA291C",
+    apiQuery: "Paris Saint Germain", coach: "Luis Enrique", salaryCap: 180, valueCap: 900, dncg: false,
+    matchNames: ["paris saint", "psg"],
+  },
 ];
 
 const FALLBACK_SQUADS = {
@@ -62,6 +70,26 @@ const FALLBACK_SQUADS = {
     { id: "f6", name: "Timothy Weah", num: 21, cat: "FWD", pos: "Ailier", age: 26, value: 14, saleTag: true },
     { id: "f7", name: "Faris Moumbagna", num: 29, cat: "FWD", pos: "Attaquant", age: 25, value: 10 },
   ],
+  psg: [
+    { id: "gk1", name: "Matvey Safonov", num: 16, cat: "GK", pos: "Gardien", age: 27, value: 25 },
+    { id: "gk2", name: "Renato Marin", num: 40, cat: "GK", pos: "Gardien", age: 23, value: 4 },
+    { id: "d1", name: "Achraf Hakimi", num: 2, cat: "DEF", pos: "Arrière droit", age: 27, value: 55 },
+    { id: "d2", name: "Nuno Mendes", num: 25, cat: "DEF", pos: "Arrière gauche", age: 23, value: 65 },
+    { id: "d3", name: "Marquinhos", num: 5, cat: "DEF", pos: "Défenseur central", age: 31, value: 15 },
+    { id: "d4", name: "Willian Pacho", num: 3, cat: "DEF", pos: "Défenseur central", age: 24, value: 45 },
+    { id: "d5", name: "Illya Zabarnyi", num: 4, cat: "DEF", pos: "Défenseur central", age: 23, value: 60 },
+    { id: "d6", name: "Lucas Digne", num: 15, cat: "DEF", pos: "Arrière gauche", age: 33, value: 8 },
+    { id: "m1", name: "Vitinha", num: 17, cat: "MID", pos: "Milieu défensif", age: 25, value: 90 },
+    { id: "m2", name: "João Neves", num: 87, cat: "MID", pos: "Milieu central", age: 20, value: 80 },
+    { id: "m3", name: "Fabián Ruiz", num: 8, cat: "MID", pos: "Milieu central", age: 29, value: 40 },
+    { id: "m4", name: "Warren Zaïre-Emery", num: 33, cat: "MID", pos: "Milieu central", age: 19, value: 70 },
+    { id: "m5", name: "Maghnes Akliouche", num: 79, cat: "MID", pos: "Milieu offensif", age: 23, value: 50 },
+    { id: "f1", name: "Ousmane Dembélé", num: 10, cat: "FWD", pos: "Ailier droit", age: 28, value: 50 },
+    { id: "f2", name: "Bradley Barcola", num: 29, cat: "FWD", pos: "Ailier gauche", age: 22, value: 55 },
+    { id: "f3", name: "Désiré Doué", num: 14, cat: "FWD", pos: "Ailier", age: 20, value: 60 },
+    { id: "f4", name: "Ferran Torres", num: 11, cat: "FWD", pos: "Avant-centre", age: 25, value: 38 },
+    { id: "f5", name: "Mika Godts", num: 21, cat: "FWD", pos: "Ailier gauche", age: 19, value: 22 },
+  ],
 };
 
 const MARKET_POOL = [
@@ -76,9 +104,29 @@ const CAT_LABEL = { GK: "Gardien", DEF: "Défenseur", MID: "Milieu", FWD: "Attaq
 const CAT_ORDER = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
 const POS_MAP = { Goalkeeper: "GK", Defender: "DEF", Midfielder: "MID", Attacker: "FWD" };
 const BENCH_SIZE = 9;
-const SQUAD_VALUE_CAP = 230;
 const START_TRANSFER_BUDGET = 10;
 const DNCG_TARGET = 80;
+
+const DIVISIONS = [
+  { id: 61, country: "France", name: "Ligue 1" },
+  { id: 62, country: "France", name: "Ligue 2" },
+  { id: 39, country: "England", name: "Premier League" },
+  { id: 40, country: "England", name: "Championship" },
+  { id: 78, country: "Germany", name: "Bundesliga" },
+  { id: 79, country: "Germany", name: "2. Bundesliga" },
+  { id: 140, country: "Spain", name: "La Liga" },
+  { id: 141, country: "Spain", name: "Segunda División" },
+  { id: 135, country: "Italy", name: "Serie A" },
+  { id: 136, country: "Italy", name: "Serie B" },
+];
+const COUNTRY_META = {
+  France: { label: "France", flagCode: "fr" },
+  England: { label: "Angleterre", flagCode: "gb-eng" },
+  Germany: { label: "Allemagne", flagCode: "de" },
+  Spain: { label: "Espagne", flagCode: "es" },
+  Italy: { label: "Italie", flagCode: "it" },
+};
+const COUNTRY_ORDER = ["France", "England", "Germany", "Spain", "Italy"];
 
 const FORMATIONS = {
   "4-3-3": [
@@ -123,8 +171,6 @@ function assignSlots(squad, formationKey) {
 function shortName(name) { const parts = name.split(" "); return parts.length > 1 ? parts[parts.length - 1] : name; }
 function fmtValue(v) { return v == null ? "n.c." : `${v}M€`; }
 
-// Ni la valeur marchande ni le salaire ne sont fournis par l'API : estimations
-// indicatives à partir de l'âge et du poste, jamais des données officielles.
 function estimateValue(age, cat, num) {
   const base = { GK: 8, DEF: 12, MID: 15, FWD: 18 }[cat] || 10;
   let ageMult;
@@ -146,11 +192,8 @@ function estimateWage(value) {
 function ClubCrest({ club, size = 40, logoUrl }) {
   if (logoUrl) return <img src={logoUrl} alt={club.code} width={size} height={size} style={{ objectFit: "contain", flexShrink: 0 }} />;
   return (
-    <div className="ft-crest-wrap" style={{ width: size }}>
-      {club.star && <div className="ft-crest-star" style={{ fontSize: size * 0.16 }}>★</div>}
-      <div className="ft-crest" style={{ width: size, height: size * 1.12,
-        background: `linear-gradient(165deg, ${club.c1} 0%, ${club.c1} 52%, ${club.c2} 52%, ${club.c2} 100%)`, fontSize: size * 0.24 }}>{club.code}</div>
-    </div>
+    <div className="ft-crest" style={{ width: size, height: size * 1.12,
+      background: `linear-gradient(165deg, ${club.c1} 0%, ${club.c1} 52%, ${club.c2} 52%, ${club.c2} 100%)`, fontSize: size * 0.24 }}>{club.code}</div>
   );
 }
 function Jersey({ club, num, empty }) {
@@ -165,19 +208,25 @@ function Jersey({ club, num, empty }) {
     </span>
   );
 }
+function Skeleton({ count = 6 }) {
+  return (
+    <div className="ft-grid">
+      {Array.from({ length: count }).map((_, i) => <div key={i} className="ft-skeleton" />)}
+    </div>
+  );
+}
 
+/* ==================================================================== */
 function FaisTonMercato() {
   const [activeKey, setActiveKey] = useState("om");
-  const [dynamicClub, setDynamicClub] = useState(null);
-  const club = dynamicClub || CLUBS.find((c) => c.id === activeKey);
+  const club = CLUBS.find((c) => c.id === activeKey);
+  const [view, setView] = useState("home");
   const [homeStage, setHomeStage] = useState("root");
-  const [browseCountry, setBrowseCountry] = useState(null);
-  const [browseLeague, setBrowseLeague] = useState(null);
-  const [leaguesList, setLeaguesList] = useState([]);
+  const [browseDivision, setBrowseDivision] = useState(null);
   const [clubsList, setClubsList] = useState([]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseError, setBrowseError] = useState("");
-  const [view, setView] = useState("home");
+
   const [squad, setSquad] = useState(FALLBACK_SQUADS.om);
   const [marketPool, setMarketPool] = useState(MARKET_POOL);
   const [transferBudget, setTransferBudget] = useState(START_TRANSFER_BUDGET);
@@ -194,36 +243,71 @@ function FaisTonMercato() {
   const [dataSource, setDataSource] = useState("loading");
   const [logosCache, setLogosCache] = useState({});
   const [liveError, setLiveError] = useState("");
-  const [quotaInfo, setQuotaInfo] = useState(null);
+
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState("signin");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMsg, setAuthMsg] = useState("");
 
   useEffect(() => {
+    sb.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
+    const { data: listener } = sb.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const doAuth = async () => {
+    if (!authEmail || !authPassword) { setAuthMsg("Renseigne un email et un mot de passe."); return; }
+    setAuthBusy(true); setAuthMsg("");
+    const fn = authMode === "signin" ? sb.auth.signInWithPassword : sb.auth.signUp;
+    const { error } = await fn({ email: authEmail, password: authPassword });
+    setAuthBusy(false);
+    if (error) { setAuthMsg(error.message); return; }
+    if (authMode === "signup") { setAuthMsg("Compte créé. Vérifie tes emails si une confirmation est demandée, sinon tu es déjà connecté."); }
+    else { setShowAuth(false); setFlash("Connecté."); }
+  };
+  const doSignOut = async () => { await sb.auth.signOut(); setFlash("Déconnecté."); };
+
+  useEffect(() => {
+    if (!authReady) return;
     let cancelled = false;
     setDataSource("loading");
-    const saveKey = `ftm-save-${activeKey}`;
-    let saved = null;
-    try { const raw = localStorage.getItem(saveKey); if (raw) saved = JSON.parse(raw); } catch (e) {}
 
-    if (saved) {
-      setSquad(saved.squad || []);
-      setFormation(saved.formation || "4-3-3");
-      setTransferBudget(saved.transferBudget ?? START_TRANSFER_BUDGET);
-      setDncgSold(saved.dncgSold ?? 0);
-      setMarketPool(saved.marketPool || MARKET_POOL);
-      setDataSource("saved");
-    } else {
-      setSquad(FALLBACK_SQUADS[activeKey] || []);
-      setTransferBudget(START_TRANSFER_BUDGET);
-      setDncgSold(0);
-      setMarketPool(MARKET_POOL);
+    async function getSaved() {
+      if (session) {
+        try {
+          const { data } = await sb.from("saves").select("data").eq("user_id", session.user.id).eq("club_key", activeKey).maybeSingle();
+          if (data && data.data) return data.data;
+        } catch (e) {}
+      }
+      try { const raw = localStorage.getItem(`ftm-save-${activeKey}`); if (raw) return JSON.parse(raw); } catch (e) {}
+      return null;
     }
 
-    async function loadLive() {
+    async function run() {
+      const saved = await getSaved();
+      if (cancelled) return;
+      if (saved) {
+        setSquad(saved.squad || []);
+        setFormation(saved.formation || "4-3-3");
+        setTransferBudget(saved.transferBudget ?? START_TRANSFER_BUDGET);
+        setDncgSold(saved.dncgSold ?? 0);
+        setMarketPool(saved.marketPool || MARKET_POOL);
+        setDataSource("saved");
+      } else {
+        setSquad(FALLBACK_SQUADS[activeKey] || []);
+        setTransferBudget(START_TRANSFER_BUDGET);
+        setDncgSold(0);
+        setMarketPool(MARKET_POOL);
+      }
+
       try {
-        const url = club.apiTeamId ? `/api/squad?teamId=${club.apiTeamId}` : `/api/squad?team=${encodeURIComponent(club.apiQuery)}`;
-        const r = await fetch(url);
+        const r = await fetch(`/api/squad?team=${encodeURIComponent(club.apiQuery)}`);
         const data = await r.json();
-        if (data.rateLimit) setQuotaInfo(data.rateLimit);
-        if (data.error) throw new Error(data.rateLimit?.remaining != null ? `${data.error} (quota restant : ${data.rateLimit.remaining}/${data.rateLimit.limit})` : data.error);
+        if (data.error) throw new Error(data.error);
         const team = data.team;
         const players = data.players || [];
         if (!team || players.length === 0) throw new Error("Réponse vide");
@@ -244,66 +328,42 @@ function FaisTonMercato() {
         if (!cancelled) { setLiveError(err.message || "Erreur inconnue"); if (!saved) setDataSource("demo"); }
       }
     }
-    loadLive();
+    run();
     return () => { cancelled = true; };
-  }, [activeKey]);
+  }, [activeKey, authReady, session]);
 
   useEffect(() => {
-    if (squad.length === 0) return;
-    try {
-      localStorage.setItem(`ftm-save-${activeKey}`, JSON.stringify({ squad, formation, transferBudget, dncgSold, marketPool }));
-    } catch (e) {}
-  }, [squad, formation, transferBudget, dncgSold, marketPool, activeKey]);
+    if (squad.length === 0 || !authReady) return;
+    const payload = { squad, formation, transferBudget, dncgSold, marketPool };
+    try { localStorage.setItem(`ftm-save-${activeKey}`, JSON.stringify(payload)); } catch (e) {}
+    if (session) {
+      sb.from("saves").upsert({ user_id: session.user.id, club_key: activeKey, data: payload, updated_at: new Date().toISOString() }).then(() => {});
+    }
+  }, [squad, formation, transferBudget, dncgSold, marketPool, activeKey, session, authReady]);
 
-  const resetSave = () => {
+  const resetSave = async () => {
     try { localStorage.removeItem(`ftm-save-${activeKey}`); } catch (e) {}
+    if (session) { try { await sb.from("saves").delete().eq("user_id", session.user.id).eq("club_key", activeKey); } catch (e) {} }
     window.location.reload();
   };
 
-  const openCountry = async (code) => {
-    setBrowseCountry(code); setHomeStage("leagues"); setBrowseLoading(true); setBrowseError(""); setLeaguesList([]);
+  const openDivision = async (div) => {
+    setBrowseDivision(div); setHomeStage("clubs"); setBrowseLoading(true); setBrowseError(""); setClubsList([]);
     try {
-      const r = await fetch(`/api/leagues?country=${encodeURIComponent(code)}`);
+      const r = await fetch(`/api/teams-by-league?league=${div.id}`);
       const data = await r.json();
-      if (data.rateLimit) setQuotaInfo(data.rateLimit);
-      if (data.error) throw new Error(data.rateLimit?.remaining != null ? `${data.error} (quota restant : ${data.rateLimit.remaining}/${data.rateLimit.limit})` : data.error);
-      setLeaguesList(data.leagues || []);
-      if ((!data.leagues || data.leagues.length === 0) && data.rateLimit?.remaining != null && Number(data.rateLimit.remaining) < 5) setBrowseError(`Aucune division trouvée — quota API presque épuisé (${data.rateLimit.remaining}/${data.rateLimit.limit} restant aujourd'hui).`);
-      else if (!data.leagues || data.leagues.length === 0) setBrowseError("Aucune division trouvée pour ce pays.");
-    } catch (err) { setBrowseError(err.message); } finally { setBrowseLoading(false); }
-  };
-
-  const openLeague = async (league) => {
-    setBrowseLeague(league); setHomeStage("clubs"); setBrowseLoading(true); setBrowseError(""); setClubsList([]);
-    try {
-      const r = await fetch(`/api/teams-by-league?league=${league.id}`);
-      const data = await r.json();
-      if (data.rateLimit) setQuotaInfo(data.rateLimit);
-      if (data.error) throw new Error(data.rateLimit?.remaining != null ? `${data.error} (quota restant : ${data.rateLimit.remaining}/${data.rateLimit.limit})` : data.error);
+      if (data.error) throw new Error(data.error);
       setClubsList(data.teams || []);
-      if ((!data.teams || data.teams.length === 0) && data.rateLimit?.remaining != null && Number(data.rateLimit.remaining) < 5) setBrowseError(`Aucun club trouvé — quota API presque épuisé (${data.rateLimit.remaining}/${data.rateLimit.limit} restant aujourd'hui).`);
-      else if (!data.teams || data.teams.length === 0) setBrowseError("Aucun club trouvé pour cette division.");
+      if (!data.teams || data.teams.length === 0) setBrowseError("Aucun club trouvé pour cette division pour le moment.");
     } catch (err) { setBrowseError(err.message); } finally { setBrowseLoading(false); }
   };
-
-  const openBrowsedClub = (team) => {
-    const curated = CLUBS.find((c) => team.name.toLowerCase().includes(c.name.toLowerCase().split(" ").pop().toLowerCase()));
-    if (curated) {
-      setDynamicClub(null);
-      setActiveKey(curated.id);
-    } else {
-      setDynamicClub({
-        id: `t${team.id}`, name: team.name, code: team.name.slice(0, 4).toUpperCase(),
-        c1: "#1C2C5B", c2: "#FFFFFF", coach: null, salaryCap: 25, apiTeamId: team.id,
-      });
-      setActiveKey(`t${team.id}`);
-    }
+  const openClub = (team) => {
+    const curated = CLUBS.find((c) => c.matchNames.some((n) => team.name.toLowerCase().includes(n)));
+    if (!curated) { setFlash(`${team.name} — bientôt jouable, reviens plus tard !`); return; }
+    setActiveKey(curated.id);
     setHomeStage("root");
     setView("squad");
   };
-
-  useEffect(() => { setAssignment(assignSlots(squad, formation)); setSelected(null); }, [formation, squad]);
-  useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(""), 2400); return () => clearTimeout(t); }, [flash]);
 
   const slots = FORMATIONS[formation];
   const handleSelect = (id) => {
@@ -326,7 +386,8 @@ function FaisTonMercato() {
     const hasValues = squadForBudget.some((p) => p.value != null && p.value > 0);
     const used = squadForBudget.reduce((s, p) => s + (p.value || 0), 0);
     const wageBill = Math.round(squadForBudget.reduce((s, p) => s + (estimateWage(p.value) || 0), 0) * 10) / 10;
-    const ratio = used / SQUAD_VALUE_CAP;
+    const cap = club.valueCap;
+    const ratio = used / cap;
     const budgetScore = ratio <= 1 ? 10 + 15 * ratio : Math.max(0, 25 - (ratio - 1) * 100);
     const withAge = filled.filter((s) => s.player.age);
     const avgAge = withAge.reduce((s, x) => s + x.player.age, 0) / (withAge.length || 1);
@@ -335,10 +396,10 @@ function FaisTonMercato() {
     const benchCatCount = cats.filter((c) => bench.some((p) => p.cat === c)).length;
     const coherence = ageScore + (benchCatCount / 4) * 10;
     const avgValue = filled.reduce((s, x) => s + (x.player.value || 0), 0) / (filled.length || 1);
-    const quality = Math.min(25, (avgValue / 45) * 25);
+    const quality = Math.min(25, (avgValue / (cap / 5)) * 25);
     return { coverage, budgetScore, coherence, quality, hasValues, wageBill,
       total: coverage + coherence + (hasValues ? budgetScore + quality : 0), partial: !hasValues, used, avgAge: withAge.length ? avgAge : null };
-  }, [starters, bench, slots.length]);
+  }, [starters, bench, slots.length, club]);
 
   const buyPlayer = (p) => {
     if (transferBudget < p.value) return;
@@ -350,7 +411,7 @@ function FaisTonMercato() {
   const sellPlayer = (p) => {
     const fee = p.value != null ? Math.round(p.value * 0.9 * 10) / 10 : 0;
     setTransferBudget((b) => Math.round((b + fee) * 10) / 10);
-    if (activeKey === "om") setDncgSold((d) => Math.round((d + fee) * 10) / 10);
+    if (club.dncg) setDncgSold((d) => Math.round((d + fee) * 10) / 10);
     setSquad((s) => s.filter((x) => x.id !== p.id));
     setFlash(`${p.name} vendu${fee ? ` pour ${fee}M€` : ""}.`);
   };
@@ -381,33 +442,22 @@ function FaisTonMercato() {
     setCustomForm({ name: "", cat: "MID", age: 24, value: 10, num: "", photo: null });
     setSearchResults([]);
   };
-
   const searchPlayer = async () => {
     if (searchQuery.trim().length < 3) { setFlash("Tape au moins 3 lettres."); return; }
-    setSearching(true);
-    setSearchResults([]);
+    setSearching(true); setSearchResults([]);
     try {
       const r = await fetch(`/api/search-player?q=${encodeURIComponent(searchQuery.trim())}`);
       const data = await r.json();
-      if (data.rateLimit) setQuotaInfo(data.rateLimit);
       if (data.error) throw new Error(data.error);
       setSearchResults(data.results || []);
-      if (!data.results || data.results.length === 0) setFlash("Aucune correspondance trouvée dans l'API (plan gratuit limité en saisons).");
-      else if (data.seasonUsed && data.seasonUsed < 2025) setFlash(`Trouvé, mais via la saison ${data.seasonUsed} (club/poste peut-être obsolètes) — vérifie avant d'ajouter.`);
-    } catch (err) {
-      setFlash(`Recherche échouée : ${err.message}`);
-    } finally {
-      setSearching(false);
-    }
+      if (!data.results || data.results.length === 0) setFlash("Aucune correspondance trouvée.");
+    } catch (err) { setFlash(`Recherche échouée : ${err.message}`); } finally { setSearching(false); }
   };
   const pickSearchResult = (r) => {
-    setCustomForm({
-      name: r.name, cat: POS_MAP[r.position] || "MID", age: r.age || 20,
-      value: estimateValue(r.age, POS_MAP[r.position] || "MID", r.number || 0),
-      num: r.number || "", photo: r.photo || null,
-    });
+    setCustomForm({ name: r.name, cat: POS_MAP[r.position] || "MID", age: r.age || 20,
+      value: estimateValue(r.age, POS_MAP[r.position] || "MID", r.number || 0), num: r.number || "", photo: r.photo || null });
     setSearchResults([]);
-    setFlash(`${r.name} — infos remplies automatiquement, vérifie et complète si besoin.`);
+    setFlash(`${r.name} — infos remplies automatiquement, vérifie avant d'ajouter.`);
   };
 
   const Chip = ({ player, slot, size = "md" }) => {
@@ -438,67 +488,94 @@ function FaisTonMercato() {
         <button className={`ft-nav-btn ${view === "home" ? "ft-active" : ""}`} onClick={() => setView("home")}><Icon>🏠</Icon> Accueil</button>
         <button className={`ft-nav-btn ${view === "squad" ? "ft-active" : ""}`} onClick={() => setView("squad")}><Icon>👕</Icon> Compositeur</button>
         <button className={`ft-nav-btn ${view === "market" ? "ft-active" : ""}`} onClick={() => setView("market")}><Icon>🔁</Icon> Marché</button>
+        <button className="ft-account-btn" onClick={() => setShowAuth(true)}>
+          {session ? <Icon>👤</Icon> : <Icon>🔑</Icon>}
+        </button>
       </nav>
       {flash && <div className="ft-flash">{flash}</div>}
-      <div className="ft-body">
-        {dataSource === "loading" && <div className="ft-status loading"><Icon>📶</Icon> Connexion à API-Football…</div>}
-        {dataSource === "live" && <div className="ft-status live"><Icon>📶</Icon> Données en direct via API-Football</div>}
-        {dataSource === "saved" && <div className="ft-status live"><Icon>💾</Icon> Partie sauvegardée chargée (dans ce navigateur) — <span className="ft-reset-link" onClick={resetSave}>réinitialiser</span></div>}
-        {dataSource === "demo" && <div className="ft-status demo"><Icon>🚫</Icon> Appel échoué ({liveError}) — {FALLBACK_SQUADS[activeKey] ? "mode démo hors-ligne." : "aucun repli disponible pour ce club, réessaie ou ajoute des joueurs toi-même."}</div>}
+
+      {showAuth && (
+        <div className="ft-modal-backdrop" onClick={() => setShowAuth(false)}>
+          <div className="ft-modal" onClick={(e) => e.stopPropagation()}>
+            {session ? (<>
+              <div className="ft-modal-title">Mon compte</div>
+              <div className="ft-row-sub" style={{ marginBottom: 14 }}>{session.user.email}</div>
+              <button className="ft-mini-btn ft-sell" onClick={doSignOut}>Se déconnecter</button>
+            </>) : (<>
+              <div className="ft-modal-title">{authMode === "signin" ? "Se connecter" : "Créer un compte"}</div>
+              <div className="ft-row-sub" style={{ marginBottom: 12 }}>Garde tes parties synchronisées entre tes appareils.</div>
+              <input className="ft-modal-input" type="email" placeholder="Email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} />
+              <input className="ft-modal-input" type="password" placeholder="Mot de passe" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} />
+              {authMsg && <div className="ft-row-sub" style={{ color: "var(--gold)", marginBottom: 8 }}>{authMsg}</div>}
+              <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "10px 0", marginBottom: 8 }} disabled={authBusy} onClick={doAuth}>
+                {authBusy ? "…" : authMode === "signin" ? "Se connecter" : "Créer le compte"}
+              </button>
+              <div className="ft-reset-link" onClick={() => { setAuthMode(authMode === "signin" ? "signup" : "signin"); setAuthMsg(""); }}>
+                {authMode === "signin" ? "Pas de compte ? En créer un" : "Déjà un compte ? Se connecter"}
+              </div>
+            </>)}
+            <div className="ft-modal-close" onClick={() => setShowAuth(false)}>✕</div>
+          </div>
+        </div>
+      )}
+
+      <div className="ft-body ft-fade-in" key={view + homeStage}>
+        {dataSource === "loading" && <div className="ft-status loading"><Icon>📶</Icon> Connexion…</div>}
+        {dataSource === "live" && <div className="ft-status live"><Icon>📶</Icon> Données en direct</div>}
+        {dataSource === "saved" && <div className="ft-status live"><Icon>💾</Icon> Partie sauvegardée{session ? " (compte)" : " (ce navigateur)"} — <span className="ft-reset-link" onClick={resetSave}>réinitialiser</span></div>}
+        {dataSource === "demo" && <div className="ft-status demo"><Icon>🚫</Icon> Connexion impossible — mode démo hors-ligne.</div>}
 
         {view === "home" && (<>
           <div className="ft-hero">
             <div className="ft-hero-mark">⚽</div>
             <h1>Fais ton Mercato</h1>
-            <p>Choisis un club et prends les commandes de son effectif</p>
+            <p>Choisis une division et prends les commandes d'un club</p>
           </div>
 
-          {homeStage === "root" && (<>
-            <div className="ft-section-label"><span>Choisis un pays</span></div>
-            <div className="ft-grid">
-              {COUNTRIES.map((co) => (
-                <button key={co.code} className="ft-club-card" onClick={() => openCountry(co.code)}>
-                  <img src={`https://flagcdn.com/w80/${co.flagCode}.png`} alt="" style={{ width: 40, height: 28, objectFit: "cover", borderRadius: 3 }} />
-                  <span className="ft-club-name">{co.label}</span>
-                </button>
-              ))}
-            </div>
-          </>)}
-
-          {homeStage === "leagues" && (<>
-            <div className="ft-hint" style={{ cursor: "pointer" }} onClick={() => setHomeStage("root")}>← Retour aux pays</div>
-            <div className="ft-section-label"><span>Divisions — {COUNTRIES.find((c) => c.code === browseCountry)?.label}</span></div>
-            {browseLoading && <div className="ft-row-sub">Chargement…</div>}
-            {browseError && <div className="ft-row-sub">{browseError}</div>}
-            <div className="ft-reserve">
-              {leaguesList.map((l) => (
-                <div key={l.id} className="ft-res-pill" onClick={() => openLeague(l)}>
-                  {l.logo && <img className="ft-row-photo" src={l.logo} alt="" style={{ width: 18, height: 18 }} />} {l.name}
+          {homeStage === "root" && (
+            <div className="ft-division-list">
+              {COUNTRY_ORDER.map((country) => (
+                <div key={country} className="ft-division-row">
+                  <div className="ft-division-country">
+                    <img src={`https://flagcdn.com/w80/${COUNTRY_META[country].flagCode}.png`} alt="" />
+                    {COUNTRY_META[country].label}
+                  </div>
+                  <div className="ft-division-btns">
+                    {DIVISIONS.filter((d) => d.country === country).map((d) => (
+                      <button key={d.id} className="ft-division-btn" onClick={() => openDivision(d)}>{d.name}</button>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
-          </>)}
+          )}
 
           {homeStage === "clubs" && (<>
-            <div className="ft-hint" style={{ cursor: "pointer" }} onClick={() => setHomeStage("leagues")}>← Retour aux divisions</div>
-            <div className="ft-section-label"><span>Clubs — {browseLeague?.name}</span></div>
-            {browseLoading && <div className="ft-row-sub">Chargement…</div>}
+            <div className="ft-hint" style={{ cursor: "pointer" }} onClick={() => setHomeStage("root")}>← Retour aux divisions</div>
+            <div className="ft-section-label"><span>{browseDivision?.name}</span></div>
+            {browseLoading && <Skeleton />}
             {browseError && <div className="ft-row-sub">{browseError}</div>}
-            <div className="ft-grid">
-              {clubsList.map((t) => (
-                <button key={t.id} className="ft-club-card" onClick={() => openBrowsedClub(t)}>
-                  {t.logo ? <img src={t.logo} width={40} height={40} alt="" style={{ objectFit: "contain" }} /> : <div className="ft-crest-wrap" style={{ width: 40 }}><div className="ft-crest" style={{ width: 40, height: 45, background: "#1C2C5B", fontSize: 10 }}>{t.name.slice(0, 3).toUpperCase()}</div></div>}
-                  <span className="ft-club-name">{t.name}</span>
-                </button>
-              ))}
-            </div>
+            {!browseLoading && (
+              <div className="ft-grid">
+                {clubsList.map((t) => {
+                  const playable = CLUBS.some((c) => c.matchNames.some((n) => t.name.toLowerCase().includes(n)));
+                  return (
+                    <button key={t.id} className={`ft-club-card ${!playable ? "ft-club-card-soon" : ""}`} onClick={() => openClub(t)}>
+                      {t.logo ? <img src={t.logo} width={40} height={40} alt="" style={{ objectFit: "contain" }} /> : <div className="ft-crest" style={{ width: 40, height: 45, background: "#1C2C5B", fontSize: 10 }}>{t.name.slice(0, 3).toUpperCase()}</div>}
+                      <span className="ft-club-name">{t.name}</span>
+                      {!playable && <span className="ft-soon">bientôt</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </>)}
         </>)}
 
         {view === "squad" && (<>
           <div className="ft-head">
             <ClubCrest club={club} size={44} logoUrl={logosCache[activeKey]?.logo} />
-            <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach || logosCache[activeKey]?.coach || "inconnu (donnée API limitée)"}</div></div>
+            <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach || logosCache[activeKey]?.coach || "inconnu"}</div></div>
             <div className="ft-formations">
               {Object.keys(FORMATIONS).map((f) => (
                 <button key={f} className={`ft-fbtn ${f === formation ? "ft-fbtn-active" : ""}`} onClick={() => setFormation(f)}>{f}</button>
@@ -507,13 +584,13 @@ function FaisTonMercato() {
           </div>
           <div className="ft-budget">
             <Icon>💰</Icon>
-            <div className="ft-budget-track"><div className={`ft-budget-fill ${score.used > SQUAD_VALUE_CAP ? "ft-over" : ""}`} style={{ width: `${Math.min(100, (score.used / SQUAD_VALUE_CAP) * 100)}%` }} /></div>
-            <div className="ft-budget-label">{score.hasValues ? `${score.used}M€ / ${SQUAD_VALUE_CAP}M€` : "valeur non fournie par l'API"}</div>
+            <div className="ft-budget-track"><div className={`ft-budget-fill ${score.used > club.valueCap ? "ft-over" : ""}`} style={{ width: `${Math.min(100, (score.used / club.valueCap) * 100)}%` }} /></div>
+            <div className="ft-budget-label">{score.hasValues ? `${score.used}M€ / ${club.valueCap}M€` : "valeur indisponible"}</div>
           </div>
           <div className="ft-budget">
             <Icon>🧾</Icon>
             <div className="ft-budget-track"><div className={`ft-budget-fill ${score.wageBill > club.salaryCap ? "ft-over" : ""}`} style={{ width: `${Math.min(100, (score.wageBill / club.salaryCap) * 100)}%` }} /></div>
-            <div className="ft-budget-label">{score.wageBill}M€/an · plafond {club.salaryCap}M€ (masse salariale estimée)</div>
+            <div className="ft-budget-label">{score.wageBill}M€/an · plafond {club.salaryCap}M€ (estimé)</div>
           </div>
 
           <div className="ft-pitch">
@@ -545,19 +622,18 @@ function FaisTonMercato() {
         </>)}
 
         {view === "market" && (<>
-          {activeKey === "om" && (
+          {club.dncg && (
             <div className={`ft-dncg ${dncgDone ? "ft-dncg-done" : ""}`}>
               <Icon>{dncgDone ? "✅" : "⚠️"}</Icon>
               <div style={{ flex: 1 }}>
-                {dncgDone ? "Objectif DNCG atteint — l'OM a cédé assez de joueurs, la pression financière retombe." : `Contrainte DNCG : céder ${DNCG_TARGET}M€ de joueurs. Progression : ${dncgSold}M€ / ${DNCG_TARGET}M€.`}
+                {dncgDone ? "Objectif DNCG atteint — la pression financière retombe." : `Contrainte DNCG : céder ${DNCG_TARGET}M€ de joueurs. Progression : ${dncgSold}M€ / ${DNCG_TARGET}M€.`}
                 <div className="ft-dncg-track"><div className="ft-dncg-fill" style={{ width: `${Math.min(100, (dncgSold / DNCG_TARGET) * 100)}%` }} /></div>
               </div>
             </div>
           )}
-
           <div className="ft-market-budget"><Icon>💰</Icon> Budget mercato disponible<b>{transferBudget}M€</b></div>
 
-          <div className="ft-section-label"><span>Pistes du mercato (sélection manuelle)</span></div>
+          <div className="ft-section-label"><span>Pistes du mercato</span></div>
           <div className="ft-search"><Icon>🔍</Icon><input placeholder="Filtrer la liste…" value={marketSearch} onChange={(e) => setMarketSearch(e.target.value)} /></div>
           {filteredMarket.map((p) => (
             <div key={p.id} className="ft-row">
@@ -568,7 +644,7 @@ function FaisTonMercato() {
           ))}
 
           <div className="ft-custom">
-            <div className="ft-custom-title"><Icon>🔎</Icon> Chercher un vrai joueur (via API-Football)</div>
+            <div className="ft-custom-title"><Icon>🔎</Icon> Chercher un vrai joueur</div>
             <div className="ft-search" style={{ marginBottom: 8 }}>
               <input placeholder="Ex. Kilian Sildillia" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchPlayer()} />
               <button className="ft-mini-btn ft-buy" onClick={searchPlayer} disabled={searching}>{searching ? "…" : "Chercher"}</button>
@@ -583,7 +659,6 @@ function FaisTonMercato() {
                 ))}
               </div>
             )}
-
             <div className="ft-custom-title" style={{ marginTop: 12 }}><Icon>➕</Icon> Ou remplis à la main</div>
             <div className="ft-custom-grid">
               <input placeholder="Nom du joueur" value={customForm.name} onChange={(e) => setCustomForm((f) => ({ ...f, name: e.target.value }))} />
@@ -616,7 +691,6 @@ function FaisTonMercato() {
               </div>
             </div>
           ))}
-
           {onLoanList.length > 0 && (<>
             <div className="ft-section-label"><span>Joueurs prêtés</span></div>
             {onLoanList.map((p) => (
@@ -629,7 +703,7 @@ function FaisTonMercato() {
           </>)}
         </>)}
 
-        <div className="ft-footnote"><Icon>ℹ️</Icon> {dataSource === "live" ? "Effectif et logo en direct depuis API-Football. Valeurs et salaires estimés (âge/poste) — pas des données officielles." : "Repli sur des données saisies à la main."}</div>
+        <div className="ft-footnote"><Icon>ℹ️</Icon> {dataSource === "live" ? "Effectif et logo en direct. Valeurs et salaires estimés (âge/poste) — pas des données officielles." : "Repli sur des données saisies à la main."}</div>
       </div>
     </div>
   );
@@ -639,56 +713,94 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
 </script>
 
 <style>
+  @keyframes ftFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes ftPulse { 0%,100% { opacity:0.5; } 50% { opacity:0.9; } }
+
   .ft-root { --ink:#0A0E12; --panel:#121A17; --panel-2:#182420; --chalk:#F4F7F1; --muted:#9FB0A6;
     --gold:#E6B450; --coral:#E4573D; --green:#2F9E74; --line:rgba(244,247,241,0.14);
     --pitch-a:#0F4A38; --pitch-b:#125640; color-scheme: dark;
     background:var(--ink); color:var(--chalk); font-family:'Inter',sans-serif;
-    border-radius:18px; max-width:560px; width:100%; margin:0 auto; overflow:hidden; border:1px solid var(--line); }
-  .ft-nav { display:flex; gap:4px; padding:12px 14px; border-bottom:1px solid var(--line); background:var(--panel); }
+    border-radius:18px; max-width:560px; width:100%; margin:0 auto; overflow:hidden; border:1px solid var(--line);
+    box-shadow:0 20px 60px rgba(0,0,0,0.45); position:relative; }
+  .ft-nav { display:flex; gap:4px; padding:12px 14px; border-bottom:1px solid var(--line); background:var(--panel); align-items:center; }
   .ft-nav-btn { display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; color:var(--muted);
-    background:transparent; border:none; padding:7px 10px; border-radius:8px; cursor:pointer; }
+    background:transparent; border:none; padding:7px 10px; border-radius:8px; cursor:pointer; transition:all .15s ease; }
+  .ft-nav-btn:hover { color:var(--chalk); background:var(--panel-2); }
   .ft-nav-btn.ft-active { background:var(--gold); color:var(--ink); }
+  .ft-account-btn { margin-left:auto; background:var(--panel-2); border:1px solid var(--line); border-radius:50%;
+    width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--chalk);
+    transition:all .15s ease; }
+  .ft-account-btn:hover { border-color:var(--gold); transform:scale(1.06); }
   .ft-body { padding:18px 20px; }
+  .ft-fade-in { animation: ftFadeIn .25s ease; }
+
   .ft-status { display:flex; align-items:center; gap:8px; font-size:10.5px; padding:8px 12px; border-radius:10px; margin-bottom:14px; }
   .ft-status.live { background:rgba(47,158,116,0.15); color:#9fe3c4; }
   .ft-status.demo { background:rgba(228,87,61,0.12); color:#f3b8ac; }
   .ft-status.loading { background:var(--panel); color:var(--muted); }
   .ft-reset-link { text-decoration:underline; cursor:pointer; }
-  .ft-crest-wrap { display:flex; flex-direction:column; align-items:center; gap:1px; flex-shrink:0; }
-  .ft-crest-star { color:var(--gold); line-height:1; }
-  .ft-crest { clip-path:polygon(50% 0%,100% 16%,100% 62%,50% 100%,0% 62%,0% 16%);
-    display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Anton',sans-serif;
+
+  .ft-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center;
+    z-index:20; animation: ftFadeIn .15s ease; }
+  .ft-modal { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:24px; width:280px; position:relative;
+    box-shadow:0 24px 60px rgba(0,0,0,0.5); }
+  .ft-modal-title { font-family:'Anton',sans-serif; font-size:18px; margin-bottom:6px; }
+  .ft-modal-input { width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--chalk); border-radius:8px;
+    padding:9px 10px; font-size:12px; margin-bottom:8px; font-family:'Inter',sans-serif; }
+  .ft-modal-close { position:absolute; top:14px; right:16px; cursor:pointer; color:var(--muted); font-size:14px; }
+
+  .ft-crest { border-radius:4px; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Anton',sans-serif;
     letter-spacing:0.2px; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,0.5); text-align:center; line-height:1; }
+
   .ft-hero { text-align:center; padding:10px 4px 20px; }
   .ft-hero-mark { font-size:38px; line-height:1; }
   .ft-hero h1 { font-family:'Anton',sans-serif; font-size:26px; letter-spacing:0.5px; margin:10px 0 4px; }
   .ft-hero p { font-size:12.5px; color:var(--muted); }
-  .ft-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px; }
+
+  .ft-division-list { display:flex; flex-direction:column; gap:10px; }
+  .ft-division-row { display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:10px 12px; flex-wrap:wrap; }
+  .ft-division-country { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; min-width:120px; }
+  .ft-division-country img { width:22px; height:16px; object-fit:cover; border-radius:2px; }
+  .ft-division-btns { display:flex; gap:6px; flex-wrap:wrap; margin-left:auto; }
+  .ft-division-btn { font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; background:var(--panel-2);
+    border:1px solid var(--line); color:var(--chalk); padding:7px 10px; border-radius:8px; cursor:pointer; transition:all .15s ease; }
+  .ft-division-btn:hover { border-color:var(--gold); color:var(--gold); transform:translateY(-1px); }
+
+  .ft-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:6px; }
   .ft-club-card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 6px;
-    display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; }
-  .ft-club-card[disabled] { opacity:0.4; cursor:not-allowed; }
+    display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; transition:all .15s ease; }
+  .ft-club-card:hover { border-color:var(--gold); transform:translateY(-2px); box-shadow:0 8px 20px rgba(0,0,0,0.3); }
+  .ft-club-card-soon { opacity:0.55; }
   .ft-club-name { font-size:9.5px; text-align:center; line-height:1.2; color:var(--chalk); }
   .ft-soon { font-family:'IBM Plex Mono',monospace; font-size:7.5px; color:var(--muted); }
+  .ft-skeleton { height:88px; border-radius:12px; background:linear-gradient(90deg, var(--panel), var(--panel-2), var(--panel));
+    background-size:200% 100%; animation: ftPulse 1.4s ease-in-out infinite; }
+
   .ft-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
   .ft-club { font-family:'Anton',sans-serif; font-size:19px; letter-spacing:0.3px; line-height:1; }
   .ft-coach { font-size:11px; color:var(--muted); margin-top:3px; }
   .ft-formations { display:flex; gap:6px; margin-left:auto; }
   .ft-fbtn { font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; background:var(--panel);
-    border:1px solid var(--line); color:var(--muted); padding:6px 8px; border-radius:8px; cursor:pointer; }
+    border:1px solid var(--line); color:var(--muted); padding:6px 8px; border-radius:8px; cursor:pointer; transition:all .15s ease; }
+  .ft-fbtn:hover { color:var(--chalk); }
   .ft-fbtn-active { background:var(--gold); color:var(--ink); border-color:var(--gold); }
   .ft-budget { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:11.5px; }
   .ft-budget-track { flex:1; height:8px; border-radius:5px; background:var(--panel); overflow:hidden; }
-  .ft-budget-fill { height:100%; background:linear-gradient(90deg,var(--gold),#F2CE86); }
+  .ft-budget-fill { height:100%; background:linear-gradient(90deg,var(--gold),#F2CE86); transition:width .4s ease; }
   .ft-budget-fill.ft-over { background:linear-gradient(90deg,var(--coral),#ff8a75); }
   .ft-budget-label { font-family:'IBM Plex Mono',monospace; color:var(--muted); white-space:nowrap; }
+
   .ft-pitch { position:relative; width:100%; aspect-ratio:3/4.1; border-radius:14px; overflow:hidden; margin-top:6px;
     background:repeating-linear-gradient(180deg, var(--pitch-a) 0 11%, var(--pitch-b) 11% 22%); border:1px solid var(--line); }
   .ft-pitch::before { content:''; position:absolute; inset:6%; border:1.5px solid rgba(244,247,241,0.35); border-radius:2px; }
   .ft-pitch::after { content:''; position:absolute; top:50%; left:50%; width:26%; aspect-ratio:1;
     border:1.5px solid rgba(244,247,241,0.35); border-radius:50%; transform:translate(-50%,-50%); }
   .ft-chip { position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center;
-    background:none; border:none; cursor:pointer; padding:0; width:56px; color:var(--chalk); }
+    background:none; border:none; cursor:pointer; padding:0; width:56px; color:var(--chalk); transition:transform .12s ease; }
+  .ft-chip:not(.ft-chip-empty):hover { transform:translate(-50%,-50%) scale(1.08); }
   .ft-bench-row .ft-chip { position:static; transform:none; flex-shrink:0; }
+  .ft-bench-row .ft-chip:not(.ft-chip-empty):hover { transform:scale(1.08); }
   .ft-jersey { position:relative; width:32px; height:32px; margin:0 auto; display:flex; align-items:center; justify-content:center;
     background:#fff; overflow:hidden;
     clip-path:polygon(22% 0%,38% 0%,50% 14%,62% 0%,78% 0%,100% 22%,84% 36%,84% 100%,16% 100%,16% 36%,0% 22%);
@@ -703,16 +815,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-chip-sel .ft-jersey { outline:2px solid var(--chalk); outline-offset:2px; }
   .ft-chip-name { font-size:9.5px; margin-top:3px; font-weight:600; text-align:center; }
   .ft-chip-tag { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); }
+
   .ft-hint { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); margin:10px 0; }
   .ft-section-label { display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:11px;
     letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin:16px 0 8px; }
   .ft-bench-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
   .ft-reserve { display:flex; flex-wrap:wrap; gap:8px; }
   .ft-res-pill { display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line);
-    border-radius:20px; padding:5px 10px 5px 6px; cursor:pointer; font-size:11px; }
+    border-radius:20px; padding:5px 10px 5px 6px; cursor:pointer; font-size:11px; transition:all .15s ease; }
+  .ft-res-pill:hover { border-color:var(--gold); }
   .ft-res-pill.ft-chip-sel { outline:2px solid var(--chalk); }
   .ft-res-num { width:18px; height:18px; border-radius:50%; background:#0B2545; color:#fff; display:flex; align-items:center;
     justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; }
+
   .ft-score { margin-top:20px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
   .ft-score-head { display:flex; align-items:center; gap:16px; margin-bottom:12px; }
   .ft-gauge { width:62px; height:62px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
@@ -726,14 +841,15 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; font-size:11px; }
   .ft-bar-label { width:125px; color:var(--muted); flex-shrink:0; }
   .ft-bar-track { flex:1; height:6px; border-radius:4px; background:var(--panel-2); overflow:hidden; }
-  .ft-bar-fill { height:100%; background:var(--green); border-radius:4px; }
+  .ft-bar-fill { height:100%; background:var(--green); border-radius:4px; transition:width .4s ease; }
   .ft-bar-fill.ft-na { background:repeating-linear-gradient(45deg, var(--panel-2), var(--panel-2) 4px, rgba(244,247,241,0.08) 4px, rgba(244,247,241,0.08) 8px); width:100% !important; }
   .ft-bar-value { font-family:'IBM Plex Mono',monospace; width:36px; text-align:right; color:var(--muted); flex-shrink:0; }
+
   .ft-dncg { display:flex; gap:8px; align-items:flex-start; background:rgba(228,87,61,0.12); border:1px solid rgba(228,87,61,0.4);
     border-radius:12px; padding:10px 12px; margin-bottom:14px; font-size:11px; color:#f3b8ac; line-height:1.4; }
   .ft-dncg-done { background:rgba(47,158,116,0.15); border-color:rgba(47,158,116,0.4); color:#9fe3c4; }
   .ft-dncg-track { height:6px; border-radius:4px; background:rgba(244,247,241,0.12); overflow:hidden; margin-top:6px; }
-  .ft-dncg-fill { height:100%; background:var(--coral); border-radius:4px; }
+  .ft-dncg-fill { height:100%; background:var(--coral); border-radius:4px; transition:width .4s ease; }
   .ft-dncg-done .ft-dncg-fill { background:var(--green); }
   .ft-market-budget { display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
     border-radius:12px; padding:12px 14px; margin-bottom:14px; }
@@ -743,7 +859,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-search input { background:none; border:none; outline:none; color:var(--chalk); font-size:12px; width:100%; }
   .ft-search-results { display:flex; flex-direction:column; gap:4px; margin-bottom:8px; }
   .ft-search-result { display:flex; align-items:center; gap:10px; background:var(--panel-2); border:1px solid var(--line);
-    border-radius:8px; padding:6px 8px; cursor:pointer; font-size:11px; }
+    border-radius:8px; padding:6px 8px; cursor:pointer; font-size:11px; transition:all .15s ease; }
+  .ft-search-result:hover { border-color:var(--gold); }
   .ft-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:12px; }
   .ft-row:last-child { border-bottom:none; }
   .ft-row-num { width:22px; height:22px; border-radius:50%; background:#0B2545; color:#fff; display:flex; align-items:center;
@@ -755,7 +872,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-row-sub { font-size:10px; color:var(--muted); }
   .ft-row-actions { margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
   .ft-mini-btn { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; border-radius:7px; padding:6px 8px;
-    border:1px solid var(--line); background:var(--panel-2); color:var(--chalk); cursor:pointer; white-space:nowrap; }
+    border:1px solid var(--line); background:var(--panel-2); color:var(--chalk); cursor:pointer; white-space:nowrap; transition:all .15s ease; }
+  .ft-mini-btn:hover:not(:disabled) { transform:translateY(-1px); }
   .ft-mini-btn.ft-buy { background:var(--gold); color:var(--ink); border-color:var(--gold); }
   .ft-mini-btn.ft-sell { background:var(--coral); color:#fff; border-color:var(--coral); }
   .ft-mini-btn:disabled { opacity:0.35; cursor:not-allowed; }
@@ -763,14 +881,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-oa { background:var(--gold); color:var(--ink); }
   .ft-tag-sale { background:rgba(228,87,61,0.25); color:#f3b8ac; }
   .ft-tag-loan { background:rgba(47,158,116,0.25); color:#9fe3c4; }
+
   .ft-custom { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; margin:12px 0 4px; }
   .ft-custom-title { font-size:11px; font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
   .ft-custom-grid { display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:8px; }
   .ft-custom input, .ft-custom select { background:var(--panel-2); border:1px solid var(--line); color:var(--chalk);
     border-radius:7px; padding:7px 8px; font-size:11px; font-family:'Inter',sans-serif; width:100%; }
   .ft-custom-actions { display:flex; gap:6px; }
+
   .ft-flash { position:sticky; top:0; z-index:5; background:var(--gold); color:var(--ink); font-size:11.5px; font-weight:600;
-    padding:8px 14px; text-align:center; }
+    padding:8px 14px; text-align:center; animation: ftFadeIn .2s ease; }
   .ft-footnote { display:flex; gap:6px; font-size:10.5px; color:var(--muted); margin-top:14px; line-height:1.4; }
 </style>
 </body>

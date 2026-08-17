@@ -26,13 +26,13 @@ module.exports = async (req, res) => {
     if (teamId) {
       const r = await fetch(`https://v3.football.api-sports.io/teams?id=${encodeURIComponent(teamId)}`, { headers });
       rl = readRL(r);
-      if (r.status === 429) { res.status(429).json({ error: "Quota API épuisé pour aujourd'hui (429).", rateLimit: rl }); return; }
+      if (r.status === 429) { res.status(429).json({ error: "Service momentanément indisponible, réessaie dans un instant.", rateLimit: rl }); return; }
       const d = await r.json();
       teamObj = d?.response?.[0]?.team;
     } else {
       const r = await fetch(`https://v3.football.api-sports.io/teams?name=${encodeURIComponent(teamName)}`, { headers });
       rl = readRL(r);
-      if (r.status === 429) { res.status(429).json({ error: "Quota API épuisé pour aujourd'hui (429).", rateLimit: rl }); return; }
+      if (r.status === 429) { res.status(429).json({ error: "Service momentanément indisponible, réessaie dans un instant.", rateLimit: rl }); return; }
       const d = await r.json();
       teamObj = d?.response?.[0]?.team;
     }
@@ -46,7 +46,7 @@ module.exports = async (req, res) => {
       fetch(`https://v3.football.api-sports.io/coachs?team=${teamObj.id}`, { headers }),
     ]);
     rl = readRL(squadRes);
-    if (squadRes.status === 429) { res.status(429).json({ error: "Quota API épuisé pour aujourd'hui (429).", rateLimit: rl }); return; }
+    if (squadRes.status === 429) { res.status(429).json({ error: "Service momentanément indisponible, réessaie dans un instant.", rateLimit: rl }); return; }
     const squadData = await squadRes.json();
     const coachData = await coachRes.json();
     const players = squadData?.response?.[0]?.players || [];
