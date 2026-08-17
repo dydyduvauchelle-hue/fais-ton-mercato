@@ -43,6 +43,16 @@ const CLUBS = [
     apiQuery: "Paris Saint Germain", coach: "Luis Enrique", salaryCap: 180, valueCap: 900, dncg: false,
     matchNames: ["paris saint", "psg"],
   },
+  {
+    id: "barca", name: "FC Barcelone", code: "FCB", c1: "#A50044", c2: "#004D98",
+    apiQuery: "Barcelona", coach: "Hansi Flick", salaryCap: 190, valueCap: 950, dncg: false,
+    matchNames: ["barcelona", "barcelone"],
+  },
+  {
+    id: "arsenal", name: "Arsenal FC", code: "ARS", c1: "#EF0107", c2: "#023474",
+    apiQuery: "Arsenal", coach: "Mikel Arteta", salaryCap: 195, valueCap: 980, dncg: false,
+    matchNames: ["arsenal"],
+  },
 ];
 
 const FALLBACK_SQUADS = {
@@ -89,6 +99,45 @@ const FALLBACK_SQUADS = {
     { id: "f3", name: "Désiré Doué", num: 14, cat: "FWD", pos: "Ailier", age: 20, value: 60 },
     { id: "f4", name: "Ferran Torres", num: 11, cat: "FWD", pos: "Avant-centre", age: 25, value: 38 },
     { id: "f5", name: "Mika Godts", num: 21, cat: "FWD", pos: "Ailier gauche", age: 19, value: 22 },
+  ],
+  barca: [
+    { id: "gk1", name: "Joan García", num: 13, cat: "GK", pos: "Gardien", age: 25, value: 30 },
+    { id: "gk2", name: "Wojciech Szczęsny", num: 1, cat: "GK", pos: "Gardien", age: 36, value: 5 },
+    { id: "d1", name: "Jules Koundé", num: 23, cat: "DEF", pos: "Arrière droit", age: 27, value: 55 },
+    { id: "d2", name: "Pau Cubarsí", num: 2, cat: "DEF", pos: "Défenseur central", age: 19, value: 60 },
+    { id: "d3", name: "Alejandro Balde", num: 3, cat: "DEF", pos: "Arrière gauche", age: 22, value: 45 },
+    { id: "d4", name: "Andreas Christensen", num: 15, cat: "DEF", pos: "Défenseur central", age: 30, value: 8 },
+    { id: "d5", name: "Eric García", num: 24, cat: "DEF", pos: "Défenseur central", age: 25, value: 15 },
+    { id: "d6", name: "João Cancelo", num: 20, cat: "DEF", pos: "Arrière droit", age: 32, value: 25 },
+    { id: "m1", name: "Pedri", num: 8, cat: "MID", pos: "Milieu central", age: 23, value: 90 },
+    { id: "m2", name: "Gavi", num: 6, cat: "MID", pos: "Milieu central", age: 22, value: 55 },
+    { id: "m3", name: "Dani Olmo", num: 21, cat: "MID", pos: "Milieu offensif", age: 28, value: 50 },
+    { id: "m4", name: "Fermín López", num: 16, cat: "MID", pos: "Milieu offensif", age: 23, value: 45 },
+    { id: "f1", name: "Lamine Yamal", num: 10, cat: "FWD", pos: "Ailier droit", age: 19, value: 180 },
+    { id: "f2", name: "Anthony Gordon", num: 27, cat: "FWD", pos: "Ailier gauche", age: 25, value: 45 },
+    { id: "f3", name: "Karim Adeyemi", num: 9, cat: "FWD", pos: "Ailier", age: 24, value: 40 },
+    { id: "f4", name: "Hamza Abdelkarim", num: 32, cat: "FWD", pos: "Attaquant", age: 19, value: 15 },
+    { id: "f5", name: "Jesse Bisiwu", num: 45, cat: "FWD", pos: "Attaquant", age: 20, value: 20 },
+  ],
+  arsenal: [
+    { id: "gk1", name: "David Raya", num: 1, cat: "GK", pos: "Gardien", age: 30, value: 35 },
+    { id: "gk2", name: "Illan Meslier", num: 13, cat: "GK", pos: "Gardien", age: 25, value: 20 },
+    { id: "d1", name: "William Saliba", num: 12, cat: "DEF", pos: "Défenseur central", age: 25, value: 70 },
+    { id: "d2", name: "Riccardo Calafiori", num: 33, cat: "DEF", pos: "Défenseur central", age: 24, value: 45 },
+    { id: "d3", name: "Gabriel Magalhães", num: 6, cat: "DEF", pos: "Défenseur central", age: 28, value: 50 },
+    { id: "d4", name: "Jurriën Timber", num: 2, cat: "DEF", pos: "Arrière droit", age: 25, value: 45 },
+    { id: "d5", name: "Myles Lewis-Skelly", num: 49, cat: "DEF", pos: "Arrière gauche", age: 19, value: 30 },
+    { id: "m1", name: "Martin Ødegaard", num: 8, cat: "MID", pos: "Milieu offensif", age: 27, value: 80 },
+    { id: "m2", name: "Declan Rice", num: 41, cat: "MID", pos: "Milieu central", age: 27, value: 90 },
+    { id: "m3", name: "Bruno Guimarães", num: 39, cat: "MID", pos: "Milieu central", age: 28, value: 75 },
+    { id: "m4", name: "Ethan Nwaneri", num: 25, cat: "MID", pos: "Milieu offensif", age: 19, value: 40 },
+    { id: "m5", name: "Mikel Merino", num: 23, cat: "MID", pos: "Milieu central", age: 30, value: 35 },
+    { id: "f1", name: "Bukayo Saka", num: 7, cat: "FWD", pos: "Ailier droit", age: 24, value: 120 },
+    { id: "f2", name: "Kai Havertz", num: 29, cat: "FWD", pos: "Avant-centre", age: 27, value: 65 },
+    { id: "f3", name: "Gabriel Martinelli", num: 11, cat: "FWD", pos: "Ailier gauche", age: 25, value: 55 },
+    { id: "f4", name: "Eberechi Eze", num: 10, cat: "FWD", pos: "Milieu offensif", age: 28, value: 60 },
+    { id: "f5", name: "Noni Madueke", num: 20, cat: "FWD", pos: "Ailier", age: 24, value: 40 },
+    { id: "f6", name: "Christos Tzolis", num: 19, cat: "FWD", pos: "Ailier", age: 23, value: 30 },
   ],
 };
 
@@ -765,7 +814,10 @@ function FaisTonMercato() {
             <input className="ft-modal-input" type="email" placeholder="Email" value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && doAuth()} />
             <div className="ft-pw-wrap">
               <input className="ft-modal-input" type={showPw ? "text" : "password"} placeholder="Mot de passe (6 caractères min.)" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && doAuth()} />
-              <span className="ft-pw-eye" onClick={() => setShowPw((v) => !v)}>{showPw ? "🙈" : "👁️"}</span>
+              <span className="ft-pw-eye"
+                onMouseDown={() => setShowPw(true)} onMouseUp={() => setShowPw(false)} onMouseLeave={() => setShowPw(false)}
+                onTouchStart={() => setShowPw(true)} onTouchEnd={() => setShowPw(false)}
+              >{showPw ? "🙈" : "👁️"}</span>
             </div>
             {authMsg && <div className="ft-row-sub" style={{ color: "var(--gold)", marginBottom: 8 }}>{authMsg}</div>}
             <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "10px 0", marginBottom: 8 }} disabled={authBusy} onClick={doAuth}>
@@ -1109,6 +1161,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
 <style>
   @keyframes ftFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
   @keyframes ftPulse { 0%,100% { opacity:0.5; } 50% { opacity:0.9; } }
+
+  .ft-root, .ft-root *, .ft-root *::before, .ft-root *::after { box-sizing: border-box; }
 
   .ft-root { --ink:#0A0E12; --panel:#121A17; --panel-2:#182420; --chalk:#F4F7F1; --muted:#9FB0A6;
     --gold:#E6B450; --coral:#E4573D; --green:#2F9E74; --line:rgba(244,247,241,0.14);
