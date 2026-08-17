@@ -262,12 +262,18 @@ function FaisTonMercato() {
   const doAuth = async () => {
     if (!authEmail || !authPassword) { setAuthMsg("Renseigne un email et un mot de passe."); return; }
     setAuthBusy(true); setAuthMsg("");
-    const fn = authMode === "signin" ? sb.auth.signInWithPassword : sb.auth.signUp;
-    const { error } = await fn({ email: authEmail, password: authPassword });
-    setAuthBusy(false);
-    if (error) { setAuthMsg(error.message); return; }
-    if (authMode === "signup") { setAuthMsg("Compte créé. Vérifie tes emails si une confirmation est demandée, sinon tu es déjà connecté."); }
-    else { setShowAuth(false); setFlash("Connecté."); }
+    try {
+      const { error } = authMode === "signin"
+        ? await sb.auth.signInWithPassword({ email: authEmail, password: authPassword })
+        : await sb.auth.signUp({ email: authEmail, password: authPassword });
+      if (error) { setAuthMsg(error.message); return; }
+      if (authMode === "signup") { setAuthMsg("Compte créé. Vérifie tes emails si une confirmation est demandée, sinon tu es déjà connecté."); }
+      else { setShowAuth(false); setFlash("Connecté."); }
+    } catch (err) {
+      setAuthMsg(err.message || "Erreur de connexion.");
+    } finally {
+      setAuthBusy(false);
+    }
   };
   const doSignOut = async () => { await sb.auth.signOut(); setFlash("Déconnecté."); };
 
@@ -296,13 +302,15 @@ function FaisTonMercato() {
         setTransferBudget(saved.transferBudget ?? START_TRANSFER_BUDGET);
         setDncgSold(saved.dncgSold ?? 0);
         setMarketPool(saved.marketPool || MARKET_POOL);
+        setLogosCache((prev) => ({ ...prev, [activeKey]: { logo: saved.logo || null, coach: saved.coach || null } }));
         setDataSource("saved");
-      } else {
-        setSquad(FALLBACK_SQUADS[activeKey] || []);
-        setTransferBudget(START_TRANSFER_BUDGET);
-        setDncgSold(0);
-        setMarketPool(MARKET_POOL);
+        return;
       }
+
+      setSquad(FALLBACK_SQUADS[activeKey] || []);
+      setTransferBudget(START_TRANSFER_BUDGET);
+      setDncgSold(0);
+      setMarketPool(MARKET_POOL);
 
       try {
         const r = await fetch(`/api/squad?team=${encodeURIComponent(club.apiQuery)}`);
@@ -313,19 +321,17 @@ function FaisTonMercato() {
         if (!team || players.length === 0) throw new Error("Réponse vide");
         if (!cancelled) {
           setLogosCache((prev) => ({ ...prev, [activeKey]: { logo: team.logo || null, coach: data.coach || null } }));
-          if (!saved) {
-            const mapped = players.map((p) => {
-              const cat = POS_MAP[p.position] || "MID";
-              return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
-                age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
-                onLoan: false, loanOA: false, loanedIn: false };
-            });
-            setSquad(mapped);
-            setDataSource("live");
-          }
+          const mapped = players.map((p) => {
+            const cat = POS_MAP[p.position] || "MID";
+            return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
+              age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
+              onLoan: false, loanOA: false, loanedIn: false };
+          });
+          setSquad(mapped);
+          setDataSource("live");
         }
       } catch (err) {
-        if (!cancelled) { setLiveError(err.message || "Erreur inconnue"); if (!saved) setDataSource("demo"); }
+        if (!cancelled) { setLiveError(err.message || "Erreur inconnue"); setDataSource("demo"); }
       }
     }
     run();
@@ -334,12 +340,37 @@ function FaisTonMercato() {
 
   useEffect(() => {
     if (squad.length === 0 || !authReady) return;
-    const payload = { squad, formation, transferBudget, dncgSold, marketPool };
+    const payload = { squad, formation, transferBudget, dncgSold, marketPool, logo: logosCache[activeKey]?.logo || null, coach: logosCache[activeKey]?.coach || null };
     try { localStorage.setItem(`ftm-save-${activeKey}`, JSON.stringify(payload)); } catch (e) {}
     if (session) {
       sb.from("saves").upsert({ user_id: session.user.id, club_key: activeKey, data: payload, updated_at: new Date().toISOString() }).then(() => {});
     }
-  }, [squad, formation, transferBudget, dncgSold, marketPool, activeKey, session, authReady]);
+  }, [squad, formation, transferBudget, dncgSold, marketPool, activeKey, session, authReady, logosCache]);
+
+  const refreshLive = async () => {
+    setDataSource("loading");
+    try {
+      const r = await fetch(`/api/squad?team=${encodeURIComponent(club.apiQuery)}`);
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      const team = data.team;
+      const players = data.players || [];
+      if (!team || players.length === 0) throw new Error("Réponse vide");
+      setLogosCache((prev) => ({ ...prev, [activeKey]: { logo: team.logo || null, coach: data.coach || null } }));
+      const mapped = players.map((p) => {
+        const cat = POS_MAP[p.position] || "MID";
+        return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
+          age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
+          onLoan: false, loanOA: false, loanedIn: false };
+      });
+      setSquad(mapped);
+      setDataSource("live");
+      setFlash("Effectif actualisé.");
+    } catch (err) {
+      setDataSource("saved");
+      setFlash(`Actualisation impossible : ${err.message}`);
+    }
+  };
 
   const resetSave = async () => {
     try { localStorage.removeItem(`ftm-save-${activeKey}`); } catch (e) {}
@@ -520,10 +551,7 @@ function FaisTonMercato() {
       )}
 
       <div className="ft-body ft-fade-in" key={view + homeStage}>
-        {dataSource === "loading" && <div className="ft-status loading"><Icon>📶</Icon> Connexion…</div>}
-        {dataSource === "live" && <div className="ft-status live"><Icon>📶</Icon> Données en direct</div>}
-        {dataSource === "saved" && <div className="ft-status live"><Icon>💾</Icon> Partie sauvegardée{session ? " (compte)" : " (ce navigateur)"} — <span className="ft-reset-link" onClick={resetSave}>réinitialiser</span></div>}
-        {dataSource === "demo" && <div className="ft-status demo"><Icon>🚫</Icon> Connexion impossible — mode démo hors-ligne.</div>}
+        {dataSource === "demo" && <div className="ft-status demo"><Icon>🚫</Icon> Connexion impossible pour le moment — effectif d'exemple affiché. <span className="ft-reset-link" onClick={refreshLive}>réessayer</span></div>}
 
         {view === "home" && (<>
           <div className="ft-hero">
@@ -703,7 +731,11 @@ function FaisTonMercato() {
           </>)}
         </>)}
 
-        <div className="ft-footnote"><Icon>ℹ️</Icon> {dataSource === "live" ? "Effectif et logo en direct. Valeurs et salaires estimés (âge/poste) — pas des données officielles." : "Repli sur des données saisies à la main."}</div>
+        <div className="ft-footnote">
+          <Icon>ℹ️</Icon> Valeurs et salaires estimés (âge/poste) — pas des données officielles.
+          {view === "squad" && <span className="ft-reset-link" style={{ marginLeft: "auto" }} onClick={refreshLive}>actualiser</span>}
+          {view === "squad" && <span className="ft-reset-link" onClick={resetSave}>réinitialiser</span>}
+        </div>
       </div>
     </div>
   );
