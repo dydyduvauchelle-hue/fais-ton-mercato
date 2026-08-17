@@ -27,23 +27,14 @@ const Icon = ({ children, size = 14 }) => (
 const CLUBS = [
   { id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545", active: true, star: true, league: "Ligue 1", apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55 },
   { id: "usbco", name: "US Boulogne Côte d'Opale", code: "USBCO", c1: "#C8102E", c2: "#000000", active: true, league: "Ligue 2", apiQuery: "Boulogne", coach: "Fabien Dagneaux", salaryCap: 8 },
-  { id: "psg", name: "Paris Saint-Germain", code: "PSG", c1: "#041E42", c2: "#DA291C", active: false, league: "Ligue 1" },
-  { id: "asm", name: "AS Monaco", code: "ASM", c1: "#E2001A", c2: "#FFFFFF", active: false, league: "Ligue 1" },
-  { id: "ol", name: "Olympique Lyonnais", code: "OL", c1: "#1C2C5B", c2: "#DA1A32", active: false, league: "Ligue 1" },
-  { id: "losc", name: "LOSC Lille", code: "LOSC", c1: "#C8102E", c2: "#003DA5", active: false, league: "Ligue 1" },
-  { id: "ogcn", name: "OGC Nice", code: "OGCN", c1: "#000000", c2: "#E2001A", active: false, league: "Ligue 1" },
-  { id: "rcl", name: "RC Lens", code: "RCL", c1: "#C8102E", c2: "#FFCC00", active: false, league: "Ligue 1" },
-  { id: "srfc", name: "Stade Rennais", code: "SRFC", c1: "#E2001A", c2: "#000000", active: false, league: "Ligue 1" },
-  { id: "rcsa", name: "RC Strasbourg", code: "RCSA", c1: "#0072CE", c2: "#FFFFFF", active: false, league: "Ligue 1" },
-  { id: "tfc", name: "Toulouse FC", code: "TFC", c1: "#6A0DAD", c2: "#FFFFFF", active: false, league: "Ligue 1" },
-  { id: "fcl", name: "FC Lorient", code: "FCL", c1: "#FF6600", c2: "#000000", active: false, league: "Ligue 1" },
-  { id: "sb29", name: "Stade Brestois", code: "SB29", c1: "#D3232B", c2: "#FFFFFF", active: false, league: "Ligue 1" },
-  { id: "aja", name: "AJ Auxerre", code: "AJA", c1: "#1C2C5B", c2: "#FFFFFF", active: false, league: "Ligue 1" },
-  { id: "sco", name: "Angers SCO", code: "SCO", c1: "#000000", c2: "#FFFFFF", active: false, league: "Ligue 1" },
-  { id: "hac", name: "Le Havre AC", code: "HAC", c1: "#0072CE", c2: "#FFFFFF", active: false, league: "Ligue 1" },
-  { id: "lmfc", name: "Le Mans FC", code: "LMFC", c1: "#0033A0", c2: "#FFFFFF", active: false, league: "Ligue 1" },
-  { id: "pfc", name: "Paris FC", code: "PFC", c1: "#003DA5", c2: "#C8102E", active: false, league: "Ligue 1" },
-  { id: "estac", name: "ESTAC Troyes", code: "ESTAC", c1: "#003DA5", c2: "#FFFFFF", active: false, league: "Ligue 1" },
+];
+
+const COUNTRIES = [
+  { code: "France", label: "France", flag: "🇫🇷" },
+  { code: "England", label: "Angleterre", flag: "🏴" },
+  { code: "Germany", label: "Allemagne", flag: "🇩🇪" },
+  { code: "Spain", label: "Espagne", flag: "🇪🇸" },
+  { code: "Italy", label: "Italie", flag: "🇮🇹" },
 ];
 
 const FALLBACK_SQUADS = {
@@ -176,8 +167,16 @@ function Jersey({ club, num, empty }) {
 }
 
 function FaisTonMercato() {
-  const [selectedClub, setSelectedClub] = useState("om");
-  const club = CLUBS.find((c) => c.id === selectedClub);
+  const [activeKey, setActiveKey] = useState("om");
+  const [dynamicClub, setDynamicClub] = useState(null);
+  const club = dynamicClub || CLUBS.find((c) => c.id === activeKey);
+  const [homeStage, setHomeStage] = useState("root");
+  const [browseCountry, setBrowseCountry] = useState(null);
+  const [browseLeague, setBrowseLeague] = useState(null);
+  const [leaguesList, setLeaguesList] = useState([]);
+  const [clubsList, setClubsList] = useState([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseError, setBrowseError] = useState("");
   const [view, setView] = useState("home");
   const [squad, setSquad] = useState(FALLBACK_SQUADS.om);
   const [marketPool, setMarketPool] = useState(MARKET_POOL);
@@ -199,35 +198,99 @@ function FaisTonMercato() {
   useEffect(() => {
     let cancelled = false;
     setDataSource("loading");
-    setSquad(FALLBACK_SQUADS[selectedClub] || []);
-    setTransferBudget(START_TRANSFER_BUDGET);
-    setDncgSold(0);
+    const saveKey = `ftm-save-${activeKey}`;
+    let saved = null;
+    try { const raw = localStorage.getItem(saveKey); if (raw) saved = JSON.parse(raw); } catch (e) {}
+
+    if (saved) {
+      setSquad(saved.squad || []);
+      setFormation(saved.formation || "4-3-3");
+      setTransferBudget(saved.transferBudget ?? START_TRANSFER_BUDGET);
+      setDncgSold(saved.dncgSold ?? 0);
+      setMarketPool(saved.marketPool || MARKET_POOL);
+      setDataSource("saved");
+    } else {
+      setSquad(FALLBACK_SQUADS[activeKey] || []);
+      setTransferBudget(START_TRANSFER_BUDGET);
+      setDncgSold(0);
+      setMarketPool(MARKET_POOL);
+    }
+
     async function loadLive() {
       try {
-        const r = await fetch(`/api/squad?team=${encodeURIComponent(club.apiQuery)}`);
+        const url = club.apiTeamId ? `/api/squad?teamId=${club.apiTeamId}` : `/api/squad?team=${encodeURIComponent(club.apiQuery)}`;
+        const r = await fetch(url);
         const data = await r.json();
         if (data.error) throw new Error(data.error);
         const team = data.team;
         const players = data.players || [];
         if (!team || players.length === 0) throw new Error("Réponse vide");
-        const mapped = players.map((p) => {
-          const cat = POS_MAP[p.position] || "MID";
-          return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
-            age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
-            onLoan: false, loanOA: false, loanedIn: false };
-        });
         if (!cancelled) {
-          setSquad(mapped);
-          setLogosCache((prev) => ({ ...prev, [selectedClub]: team.logo || null }));
-          setDataSource("live");
+          setLogosCache((prev) => ({ ...prev, [activeKey]: { logo: team.logo || null, coach: data.coach || null } }));
+          if (!saved) {
+            const mapped = players.map((p) => {
+              const cat = POS_MAP[p.position] || "MID";
+              return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
+                age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
+                onLoan: false, loanOA: false, loanedIn: false };
+            });
+            setSquad(mapped);
+            setDataSource("live");
+          }
         }
       } catch (err) {
-        if (!cancelled) { setLiveError(err.message || "Erreur inconnue"); setDataSource("demo"); }
+        if (!cancelled) { setLiveError(err.message || "Erreur inconnue"); if (!saved) setDataSource("demo"); }
       }
     }
     loadLive();
     return () => { cancelled = true; };
-  }, [selectedClub]);
+  }, [activeKey]);
+
+  useEffect(() => {
+    if (squad.length === 0) return;
+    try {
+      localStorage.setItem(`ftm-save-${activeKey}`, JSON.stringify({ squad, formation, transferBudget, dncgSold, marketPool }));
+    } catch (e) {}
+  }, [squad, formation, transferBudget, dncgSold, marketPool, activeKey]);
+
+  const resetSave = () => {
+    try { localStorage.removeItem(`ftm-save-${activeKey}`); } catch (e) {}
+    window.location.reload();
+  };
+
+  const openFeatured = (id) => { setDynamicClub(null); setActiveKey(id); setView("squad"); };
+
+  const openCountry = async (code) => {
+    setBrowseCountry(code); setHomeStage("leagues"); setBrowseLoading(true); setBrowseError(""); setLeaguesList([]);
+    try {
+      const r = await fetch(`/api/leagues?country=${encodeURIComponent(code)}`);
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      setLeaguesList(data.leagues || []);
+      if (!data.leagues || data.leagues.length === 0) setBrowseError("Aucune division trouvée pour ce pays.");
+    } catch (err) { setBrowseError(err.message); } finally { setBrowseLoading(false); }
+  };
+
+  const openLeague = async (league) => {
+    setBrowseLeague(league); setHomeStage("clubs"); setBrowseLoading(true); setBrowseError(""); setClubsList([]);
+    try {
+      const r = await fetch(`/api/teams-by-league?league=${league.id}`);
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      setClubsList(data.teams || []);
+      if (!data.teams || data.teams.length === 0) setBrowseError("Aucun club trouvé pour cette division.");
+    } catch (err) { setBrowseError(err.message); } finally { setBrowseLoading(false); }
+  };
+
+  const openBrowsedClub = (team) => {
+    setDynamicClub({
+      id: `t${team.id}`, name: team.name, code: team.name.slice(0, 4).toUpperCase(),
+      c1: "#1C2C5B", c2: "#FFFFFF", coach: null, salaryCap: 25, apiTeamId: team.id,
+    });
+    setActiveKey(`t${team.id}`);
+    setHomeStage("root");
+    setView("squad");
+  };
 
   useEffect(() => { setAssignment(assignSlots(squad, formation)); setSelected(null); }, [formation, squad]);
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(""), 2400); return () => clearTimeout(t); }, [flash]);
@@ -277,7 +340,7 @@ function FaisTonMercato() {
   const sellPlayer = (p) => {
     const fee = p.value != null ? Math.round(p.value * 0.9 * 10) / 10 : 0;
     setTransferBudget((b) => Math.round((b + fee) * 10) / 10);
-    if (selectedClub === "om") setDncgSold((d) => Math.round((d + fee) * 10) / 10);
+    if (activeKey === "om") setDncgSold((d) => Math.round((d + fee) * 10) / 10);
     setSquad((s) => s.filter((x) => x.id !== p.id));
     setFlash(`${p.name} vendu${fee ? ` pour ${fee}M€` : ""}.`);
   };
@@ -318,7 +381,8 @@ function FaisTonMercato() {
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       setSearchResults(data.results || []);
-      if (!data.results || data.results.length === 0) setFlash("Aucune correspondance trouvée dans l'API.");
+      if (!data.results || data.results.length === 0) setFlash("Aucune correspondance trouvée dans l'API (plan gratuit limité en saisons).");
+      else if (data.seasonUsed && data.seasonUsed < 2025) setFlash(`Trouvé, mais via la saison ${data.seasonUsed} (club/poste peut-être obsolètes) — vérifie avant d'ajouter.`);
     } catch (err) {
       setFlash(`Recherche échouée : ${err.message}`);
     } finally {
@@ -368,29 +432,73 @@ function FaisTonMercato() {
       <div className="ft-body">
         {dataSource === "loading" && <div className="ft-status loading"><Icon>📶</Icon> Connexion à API-Football…</div>}
         {dataSource === "live" && <div className="ft-status live"><Icon>📶</Icon> Données en direct via API-Football</div>}
-        {dataSource === "demo" && <div className="ft-status demo"><Icon>🚫</Icon> Appel échoué ({liveError}) — {FALLBACK_SQUADS[selectedClub] ? "mode démo hors-ligne." : "aucun repli disponible pour ce club, réessaie ou ajoute des joueurs toi-même."}</div>}
+        {dataSource === "saved" && <div className="ft-status live"><Icon>💾</Icon> Partie sauvegardée chargée (dans ce navigateur) — <span className="ft-reset-link" onClick={resetSave}>réinitialiser</span></div>}
+        {dataSource === "demo" && <div className="ft-status demo"><Icon>🚫</Icon> Appel échoué ({liveError}) — {FALLBACK_SQUADS[activeKey] ? "mode démo hors-ligne." : "aucun repli disponible pour ce club, réessaie ou ajoute des joueurs toi-même."}</div>}
 
         {view === "home" && (<>
           <div className="ft-hero">
-            <ClubCrest club={club} size={54} logoUrl={logosCache[selectedClub]} />
+            <div className="ft-hero-mark">⚽</div>
             <h1>Fais ton Mercato</h1>
-            <p>Ligue 1 & Ligue 2 2026-2027 · choisis un club et prends les commandes de son effectif</p>
+            <p>Choisis un club et prends les commandes de son effectif</p>
           </div>
-          <div className="ft-grid">
-            {CLUBS.map((c) => (
-              <button key={c.id} className="ft-club-card" disabled={!c.active} onClick={() => { if (c.active) { setSelectedClub(c.id); setView("squad"); } }}>
-                <ClubCrest club={c} size={40} logoUrl={logosCache[c.id]} />
-                <span className="ft-club-name">{c.name}</span>
-                <span className="ft-soon">{c.active ? c.league : "bientôt"}</span>
-              </button>
-            ))}
-          </div>
+
+          {homeStage === "root" && (<>
+            <div className="ft-section-label"><span>Clubs à la une</span></div>
+            <div className="ft-grid">
+              {CLUBS.map((c) => (
+                <button key={c.id} className="ft-club-card" onClick={() => openFeatured(c.id)}>
+                  <ClubCrest club={c} size={40} logoUrl={logosCache[c.id]?.logo} />
+                  <span className="ft-club-name">{c.name}</span>
+                  <span className="ft-soon">{c.league}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="ft-section-label"><span>Parcourir par pays</span></div>
+            <div className="ft-grid">
+              {COUNTRIES.map((co) => (
+                <button key={co.code} className="ft-club-card" onClick={() => openCountry(co.code)}>
+                  <div className="ft-hero-mark" style={{ fontSize: 28 }}>{co.flag}</div>
+                  <span className="ft-club-name">{co.label}</span>
+                </button>
+              ))}
+            </div>
+          </>)}
+
+          {homeStage === "leagues" && (<>
+            <div className="ft-hint" style={{ cursor: "pointer" }} onClick={() => setHomeStage("root")}>← Retour aux pays</div>
+            <div className="ft-section-label"><span>Divisions — {COUNTRIES.find((c) => c.code === browseCountry)?.label}</span></div>
+            {browseLoading && <div className="ft-row-sub">Chargement…</div>}
+            {browseError && <div className="ft-row-sub">{browseError}</div>}
+            <div className="ft-reserve">
+              {leaguesList.map((l) => (
+                <div key={l.id} className="ft-res-pill" onClick={() => openLeague(l)}>
+                  {l.logo && <img className="ft-row-photo" src={l.logo} alt="" style={{ width: 18, height: 18 }} />} {l.name}
+                </div>
+              ))}
+            </div>
+          </>)}
+
+          {homeStage === "clubs" && (<>
+            <div className="ft-hint" style={{ cursor: "pointer" }} onClick={() => setHomeStage("leagues")}>← Retour aux divisions</div>
+            <div className="ft-section-label"><span>Clubs — {browseLeague?.name}</span></div>
+            {browseLoading && <div className="ft-row-sub">Chargement…</div>}
+            {browseError && <div className="ft-row-sub">{browseError}</div>}
+            <div className="ft-grid">
+              {clubsList.map((t) => (
+                <button key={t.id} className="ft-club-card" onClick={() => openBrowsedClub(t)}>
+                  {t.logo ? <img src={t.logo} width={40} height={40} alt="" style={{ objectFit: "contain" }} /> : <div className="ft-crest-wrap" style={{ width: 40 }}><div className="ft-crest" style={{ width: 40, height: 45, background: "#1C2C5B", fontSize: 10 }}>{t.name.slice(0, 3).toUpperCase()}</div></div>}
+                  <span className="ft-club-name">{t.name}</span>
+                </button>
+              ))}
+            </div>
+          </>)}
         </>)}
 
         {view === "squad" && (<>
           <div className="ft-head">
-            <ClubCrest club={club} size={44} logoUrl={logosCache[selectedClub]} />
-            <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach}</div></div>
+            <ClubCrest club={club} size={44} logoUrl={logosCache[activeKey]?.logo} />
+            <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {logosCache[activeKey]?.coach || club.coach || "inconnu"}</div></div>
             <div className="ft-formations">
               {Object.keys(FORMATIONS).map((f) => (
                 <button key={f} className={`ft-fbtn ${f === formation ? "ft-fbtn-active" : ""}`} onClick={() => setFormation(f)}>{f}</button>
@@ -437,7 +545,7 @@ function FaisTonMercato() {
         </>)}
 
         {view === "market" && (<>
-          {selectedClub === "om" && (
+          {activeKey === "om" && (
             <div className={`ft-dncg ${dncgDone ? "ft-dncg-done" : ""}`}>
               <Icon>{dncgDone ? "✅" : "⚠️"}</Icon>
               <div style={{ flex: 1 }}>
@@ -533,7 +641,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
 <style>
   .ft-root { --ink:#0A0E12; --panel:#121A17; --panel-2:#182420; --chalk:#F4F7F1; --muted:#9FB0A6;
     --gold:#E6B450; --coral:#E4573D; --green:#2F9E74; --line:rgba(244,247,241,0.14);
-    --pitch-a:#0F4A38; --pitch-b:#125640;
+    --pitch-a:#0F4A38; --pitch-b:#125640; color-scheme: dark;
     background:var(--ink); color:var(--chalk); font-family:'Inter',sans-serif;
     border-radius:18px; max-width:560px; width:100%; margin:0 auto; overflow:hidden; border:1px solid var(--line); }
   .ft-nav { display:flex; gap:4px; padding:12px 14px; border-bottom:1px solid var(--line); background:var(--panel); }
@@ -545,12 +653,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-status.live { background:rgba(47,158,116,0.15); color:#9fe3c4; }
   .ft-status.demo { background:rgba(228,87,61,0.12); color:#f3b8ac; }
   .ft-status.loading { background:var(--panel); color:var(--muted); }
+  .ft-reset-link { text-decoration:underline; cursor:pointer; }
   .ft-crest-wrap { display:flex; flex-direction:column; align-items:center; gap:1px; flex-shrink:0; }
   .ft-crest-star { color:var(--gold); line-height:1; }
   .ft-crest { clip-path:polygon(50% 0%,100% 16%,100% 62%,50% 100%,0% 62%,0% 16%);
     display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Anton',sans-serif;
     letter-spacing:0.2px; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,0.5); text-align:center; line-height:1; }
   .ft-hero { text-align:center; padding:10px 4px 20px; }
+  .ft-hero-mark { font-size:38px; line-height:1; }
   .ft-hero h1 { font-family:'Anton',sans-serif; font-size:26px; letter-spacing:0.5px; margin:10px 0 4px; }
   .ft-hero p { font-size:12.5px; color:var(--muted); }
   .ft-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px; }
@@ -577,7 +687,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-pitch::after { content:''; position:absolute; top:50%; left:50%; width:26%; aspect-ratio:1;
     border:1.5px solid rgba(244,247,241,0.35); border-radius:50%; transform:translate(-50%,-50%); }
   .ft-chip { position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center;
-    background:none; border:none; cursor:pointer; padding:0; width:56px; }
+    background:none; border:none; cursor:pointer; padding:0; width:56px; color:var(--chalk); }
   .ft-bench-row .ft-chip { position:static; transform:none; flex-shrink:0; }
   .ft-jersey { position:relative; width:32px; height:32px; margin:0 auto; display:flex; align-items:center; justify-content:center;
     background:#fff; overflow:hidden;

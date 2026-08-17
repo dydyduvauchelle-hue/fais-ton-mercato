@@ -5,30 +5,47 @@
 
 module.exports = async (req, res) => {
   const API_KEY = process.env.API_FOOTBALL_KEY;
-  const team = (req.query.team || "Marseille").trim();
+  const teamName = (req.query.team || "").trim();
+  const teamId = (req.query.teamId || "").trim();
 
   if (!API_KEY) {
     res.status(500).json({ error: "Variable d'environnement API_FOOTBALL_KEY manquante sur Vercel." });
     return;
   }
+  if (!teamName && !teamId) {
+    res.status(400).json({ error: "Paramètre team ou teamId manquant." });
+    return;
+  }
 
   try {
     const headers = { "x-apisports-key": API_KEY };
+    let teamObj;
 
-    const teamRes = await fetch(`https://v3.football.api-sports.io/teams?name=${encodeURIComponent(team)}`, { headers });
-    const teamData = await teamRes.json();
-    const teamObj = teamData?.response?.[0]?.team;
+    if (teamId) {
+      const r = await fetch(`https://v3.football.api-sports.io/teams?id=${encodeURIComponent(teamId)}`, { headers });
+      const d = await r.json();
+      teamObj = d?.response?.[0]?.team;
+    } else {
+      const r = await fetch(`https://v3.football.api-sports.io/teams?name=${encodeURIComponent(teamName)}`, { headers });
+      const d = await r.json();
+      teamObj = d?.response?.[0]?.team;
+    }
     if (!teamObj) {
-      res.status(404).json({ error: `Équipe "${team}" introuvable dans la réponse API-Football.` });
+      res.status(404).json({ error: "Équipe introuvable dans la réponse API-Football." });
       return;
     }
 
-    const squadRes = await fetch(`https://v3.football.api-sports.io/players/squads?team=${teamObj.id}`, { headers });
+    const [squadRes, coachRes] = await Promise.all([
+      fetch(`https://v3.football.api-sports.io/players/squads?team=${teamObj.id}`, { headers }),
+      fetch(`https://v3.football.api-sports.io/coachs?team=${teamObj.id}`, { headers }),
+    ]);
     const squadData = await squadRes.json();
+    const coachData = await coachRes.json();
     const players = squadData?.response?.[0]?.players || [];
+    const coach = coachData?.response?.[0]?.name || null;
 
     res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate");
-    res.status(200).json({ team: teamObj, players });
+    res.status(200).json({ team: teamObj, players, coach });
   } catch (err) {
     res.status(500).json({ error: err.message || "Erreur serveur inconnue." });
   }

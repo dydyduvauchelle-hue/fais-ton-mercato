@@ -10,13 +10,14 @@ module.exports = async (req, res) => {
 
   try {
     const headers = { "x-apisports-key": API_KEY };
-    const seasons = [2026, 2025];
+    const seasons = [2026, 2025, 2024, 2023, 2022, 2021];
     let results = [];
+    let seasonUsed = null;
 
     for (const season of seasons) {
       const r = await fetch(`https://v3.football.api-sports.io/players?search=${encodeURIComponent(q)}&season=${season}`, { headers });
       const data = await r.json();
-      if (data?.response?.length) { results = data.response; break; }
+      if (data?.response?.length) { results = data.response; seasonUsed = season; break; }
     }
 
     const mapped = results.slice(0, 5).map((r) => {
@@ -33,7 +34,7 @@ module.exports = async (req, res) => {
     });
 
     res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate");
-    res.status(200).json({ results: mapped });
+    res.status(200).json({ results: mapped, seasonUsed });
   } catch (err) {
     res.status(500).json({ error: err.message || "Erreur serveur inconnue." });
   }
