@@ -1,15 +1,30 @@
-// Fonction serveur (Vercel Function). Tourne côté serveur, jamais dans le
-// navigateur : la clé API n'est donc jamais visible par les visiteurs du site.
-// La clé est lue depuis une variable d'environnement Vercel nommée
-// API_FOOTBALL_KEY (à configurer dans Vercel > Settings > Environment Variables).
+// Fonction serveur (Vercel Function). Le token Sportmonks reste côté serveur,
+// jamais visible du navigateur. Variable d'environnement : SPORTMONKS_API_TOKEN
+// (à configurer dans Vercel > Settings > Environment Variables).
+
+const BASE = "https://api.sportmonks.com/v3/football";
+
+function normalizeCat(posName) {
+  const p = (posName || "").toLowerCase();
+  if (p.includes("keeper")) return "GK";
+  if (p.includes("back") || p.includes("defen")) return "DEF";
+  if (p.includes("midfield")) return "MID";
+  if (p.includes("wing") || p.includes("forward") || p.includes("striker") || p.includes("attack")) return "FWD";
+  return "MID";
+}
+function ageFromDOB(dob) {
+  if (!dob) return null;
+  const diff = Date.now() - new Date(dob).getTime();
+  return diff > 0 ? Math.floor(diff / 31557600000) : null;
+}
 
 module.exports = async (req, res) => {
-  const API_KEY = process.env.API_FOOTBALL_KEY;
+  const TOKEN = process.env.SPORTMONKS_API_TOKEN;
   const teamName = (req.query.team || "").trim();
   const teamId = (req.query.teamId || "").trim();
 
-  if (!API_KEY) {
-    res.status(500).json({ error: "Variable d'environnement API_FOOTBALL_KEY manquante sur Vercel." });
+  if (!TOKEN) {
+    res.status(500).json({ error: "Variable d'environnement SPORTMONKS_API_TOKEN manquante sur Vercel." });
     return;
   }
   if (!teamName && !teamId) {
@@ -18,42 +33,48 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const headers = { "x-apisports-key": API_KEY };
-    let teamObj;
-    let rl = null;
-    const readRL = (r) => ({ remaining: r.headers.get("x-ratelimit-requests-remaining"), limit: r.headers.get("x-ratelimit-requests-limit") });
+    let id = teamId;
+    let fallbackName = teamName;
+    let fallbackLogo = null;
 
-    if (teamId) {
-      const r = await fetch(`https://v3.football.api-sports.io/teams?id=${encodeURIComponent(teamId)}`, { headers });
-      rl = readRL(r);
-      if (r.status === 429) { res.status(429).json({ error: "Service momentanément indisponible, réessaie dans un instant.", rateLimit: rl }); return; }
+    if (!id) {
+      const r = await fetch(`${BASE}/teams/search/${encodeURIComponent(teamName)}?api_token=${TOKEN}`);
       const d = await r.json();
-      teamObj = d?.response?.[0]?.team;
-    } else {
-      const r = await fetch(`https://v3.football.api-sports.io/teams?name=${encodeURIComponent(teamName)}`, { headers });
-      rl = readRL(r);
-      if (r.status === 429) { res.status(429).json({ error: "Service momentanément indisponible, réessaie dans un instant.", rateLimit: rl }); return; }
-      const d = await r.json();
-      teamObj = d?.response?.[0]?.team;
-    }
-    if (!teamObj) {
-      res.status(404).json({ error: "Équipe introuvable dans la réponse API-Football.", rateLimit: rl });
-      return;
+      if (!r.ok) throw new Error(d.message || `Erreur Sportmonks (${r.status}) lors de la recherche d'équipe.`);
+      const t = d?.data?.[0];
+      if (!t) { res.status(404).json({ error: `Équipe "${teamName}" introuvable via Sportmonks.` }); return; }
+      id = t.id; fallbackName = t.name; fallbackLogo = t.image_path;
     }
 
-    const [squadRes, coachRes] = await Promise.all([
-      fetch(`https://v3.football.api-sports.io/players/squads?team=${teamObj.id}`, { headers }),
-      fetch(`https://v3.football.api-sports.io/coachs?team=${teamObj.id}`, { headers }),
+    const [squadRes, teamRes] = await Promise.all([
+      fetch(`${BASE}/squads/teams/${id}?api_token=${TOKEN}&include=player.position`),
+      fetch(`${BASE}/teams/${id}?api_token=${TOKEN}&include=coaches`),
     ]);
-    rl = readRL(squadRes);
-    if (squadRes.status === 429) { res.status(429).json({ error: "Service momentanément indisponible, réessaie dans un instant.", rateLimit: rl }); return; }
     const squadData = await squadRes.json();
-    const coachData = await coachRes.json();
-    const players = squadData?.response?.[0]?.players || [];
-    const coach = coachData?.response?.[0]?.name || null;
+    const teamData = await teamRes.json();
+    if (!squadRes.ok) throw new Error(squadData.message || `Erreur Sportmonks (${squadRes.status}) sur l'effectif.`);
+
+    const players = (squadData.data || [])
+      .filter((s) => s.player)
+      .map((s) => ({
+        id: s.player.id,
+        name: s.player.display_name || s.player.name,
+        number: s.jersey_number || null,
+        age: ageFromDOB(s.player.date_of_birth),
+        photo: s.player.image_path || null,
+        position: normalizeCat(s.player.position?.name),
+      }));
+
+    const teamObj = teamData.data || { id, name: fallbackName, image_path: fallbackLogo };
+    const coachEntry = teamData.data?.coaches?.[0];
+    const coach = coachEntry?.coach?.display_name || coachEntry?.display_name || null;
 
     res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate");
-    res.status(200).json({ team: teamObj, players, coach, rateLimit: rl });
+    res.status(200).json({
+      team: { id: teamObj.id, name: teamObj.name || fallbackName, logo: teamObj.image_path || fallbackLogo },
+      players,
+      coach,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message || "Erreur serveur inconnue." });
   }

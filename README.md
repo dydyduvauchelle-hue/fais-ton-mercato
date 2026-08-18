@@ -9,7 +9,7 @@
 ## Déploiement (GitHub + Vercel)
 1. Upload tous les fichiers sur ton repository GitHub (écrase les anciens)
 2. Vercel redéploie automatiquement
-3. Vérifie que la variable d'environnement `API_FOOTBALL_KEY` est bien configurée sur Vercel (Settings > Environment Variables)
+3. Vérifie que la variable d'environnement `SPORTMONKS_API_TOKEN` est bien configurée sur Vercel (Settings > Environment Variables)
 
 ## Activer les comptes utilisateurs (une seule fois)
 1. Va sur ton projet Supabase > SQL Editor > New query

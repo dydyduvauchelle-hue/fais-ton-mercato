@@ -1,31 +1,30 @@
-module.exports = async (req, res) => {
-  const API_KEY = process.env.API_FOOTBALL_KEY;
-  const league = (req.query.league || "").trim();
+const BASE = "https://api.sportmonks.com/v3/football";
 
-  if (!API_KEY) { res.status(500).json({ error: "Variable d'environnement API_FOOTBALL_KEY manquante." }); return; }
-  if (!league) { res.status(400).json({ error: "Paramètre league manquant." }); return; }
+module.exports = async (req, res) => {
+  const TOKEN = process.env.SPORTMONKS_API_TOKEN;
+  const leagueName = (req.query.league || "").trim();
+
+  if (!TOKEN) { res.status(500).json({ error: "Variable d'environnement SPORTMONKS_API_TOKEN manquante." }); return; }
+  if (!leagueName) { res.status(400).json({ error: "Paramètre league manquant." }); return; }
 
   try {
-    const headers = { "x-apisports-key": API_KEY };
-    const seasons = [2026, 2025];
-    let teams = [];
-    let seasonUsed = null;
-    let lastRateLimit = null;
+    const lr = await fetch(`${BASE}/leagues/search/${encodeURIComponent(leagueName)}?api_token=${TOKEN}&include=currentSeason`);
+    const ld = await lr.json();
+    if (!lr.ok) throw new Error(ld.message || `Erreur Sportmonks (${lr.status}) sur la recherche de division.`);
+    const league = (ld.data || [])[0];
+    if (!league) { res.status(404).json({ error: `Division "${leagueName}" introuvable via Sportmonks.` }); return; }
 
-    for (const season of seasons) {
-      const r = await fetch(`https://v3.football.api-sports.io/teams?league=${encodeURIComponent(league)}&season=${season}`, { headers });
-      lastRateLimit = { remaining: r.headers.get("x-ratelimit-requests-remaining"), limit: r.headers.get("x-ratelimit-requests-limit") };
-      const data = await r.json();
-      if (data?.errors && Object.keys(data.errors).length) { teams = []; teams.__error = JSON.stringify(data.errors); }
-      if (data?.response?.length) {
-        teams = data.response.map((x) => ({ id: x.team.id, name: x.team.name, logo: x.team.logo }));
-        seasonUsed = season;
-        break;
-      }
-    }
+    const seasonId = league.currentseason?.id || league.current_season_id;
+    if (!seasonId) { res.status(404).json({ error: "Saison actuelle introuvable pour cette division." }); return; }
+
+    const tr = await fetch(`${BASE}/teams/seasons/${seasonId}?api_token=${TOKEN}`);
+    const td = await tr.json();
+    if (!tr.ok) throw new Error(td.message || `Erreur Sportmonks (${tr.status}) sur la liste des clubs.`);
+
+    const teams = (td.data || []).map((t) => ({ id: t.id, name: t.name, logo: t.image_path }));
 
     res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate");
-    res.status(200).json({ teams, seasonUsed, apiErrors: teams.__error || null, rateLimit: lastRateLimit });
+    res.status(200).json({ teams });
   } catch (err) {
     res.status(500).json({ error: err.message || "Erreur serveur inconnue." });
   }

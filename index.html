@@ -497,7 +497,7 @@ function FaisTonMercato() {
       if (!team || players.length === 0) throw new Error("Réponse vide");
       setLogosCache((prev) => ({ ...prev, [clubId]: { logo: team.logo || null, coach: data.coach || null } }));
       const mapped = players.map((p) => {
-        const cat = POS_MAP[p.position] || "MID";
+        const cat = POS_MAP[p.position] || p.position || "MID";
         return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
           age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
           contractEnd: contractFor(p.age || 25), verified: true,
@@ -580,7 +580,7 @@ function FaisTonMercato() {
       if (!team || players.length === 0) throw new Error("Réponse vide");
       setLogosCache((prev) => ({ ...prev, [activeKey]: { logo: team.logo || null, coach: data.coach || null } }));
       const mapped = players.map((p) => {
-        const cat = POS_MAP[p.position] || "MID";
+        const cat = POS_MAP[p.position] || p.position || "MID";
         return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
           age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
           contractEnd: contractFor(p.age || 25), verified: true,
@@ -599,7 +599,7 @@ function FaisTonMercato() {
     setBrowseDivision(div); setHomeStage("clubs"); setBrowseLoading(true); setBrowseError(""); setClubsList([]);
     const curatedFallback = () => CLUBS.filter((c) => c.leagueId === div.id).map((c) => ({ id: c.id, name: c.name, logo: null }));
     try {
-      const r = await fetch(`/api/teams-by-league?league=${div.id}`);
+      const r = await fetch(`/api/teams-by-league?league=${encodeURIComponent(div.name)}`);
       const data = await r.json();
       if (data.error || !data.teams || data.teams.length === 0) throw new Error("indisponible");
       setClubsList(data.teams);
@@ -789,8 +789,8 @@ function FaisTonMercato() {
     } catch (err) { setFlash(`Recherche échouée : ${err.message}`); } finally { setSearching(false); }
   };
   const pickSearchResult = (r) => {
-    setCustomForm({ name: r.name, cat: POS_MAP[r.position] || "MID", age: r.age || 20,
-      value: estimateValue(r.age, POS_MAP[r.position] || "MID", r.number || 0), num: r.number || "", photo: r.photo || null, verified: true, fromClub: r.team || "" });
+    setCustomForm({ name: r.name, cat: POS_MAP[r.position] || r.position || "MID", age: r.age || 20,
+      value: estimateValue(r.age, POS_MAP[r.position] || r.position || "MID", r.number || 0), num: r.number || "", photo: r.photo || null, verified: true, fromClub: r.team || "" });
     setSearchResults([]);
     setFlash(`${r.name} — infos remplies automatiquement, vérifie avant d'ajouter.`);
   };
@@ -1182,7 +1182,7 @@ function FaisTonMercato() {
               <div className="ft-search-results">
                 {searchResults.map((r) => (
                   <div key={r.id} className="ft-search-result" onClick={() => pickSearchResult(r)}>
-                    {r.photo ? <img className="ft-row-photo" src={r.photo} alt="" /> : <div className="ft-row-num">{POS_MAP[r.position] || "?"}</div>}
+                    {r.photo ? <img className="ft-row-photo" src={r.photo} alt="" /> : <div className="ft-row-num">{POS_MAP[r.position] || r.position || "?"}</div>}
                     <div><div className="ft-row-name">{r.name}</div><div className="ft-row-sub">{r.team || "club inconnu"} · {r.position || "poste inconnu"} · {r.age ? `${r.age} ans` : ""}</div></div>
                   </div>
                 ))}
