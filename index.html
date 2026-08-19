@@ -244,6 +244,38 @@ const COUNTRY_META = {
 const COUNTRY_ORDER = ["France", "England", "Germany", "Spain", "Italy", "Netherlands", "Portugal", "Switzerland", "USA", "SaudiArabia", "Turkey", "Argentina"];
 
 const FORMATIONS = {
+  "3-4-3": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DCL", cat: "DEF", top: 76, left: 25 },
+    { id: "DC", cat: "DEF", top: 80, left: 50 }, { id: "DCR", cat: "DEF", top: 76, left: 75 },
+    { id: "ML", cat: "MID", top: 53, left: 10 }, { id: "MCL", cat: "MID", top: 57, left: 37 },
+    { id: "MCR", cat: "MID", top: 57, left: 63 }, { id: "MR", cat: "MID", top: 53, left: 90 },
+    { id: "FL", cat: "FWD", top: 19, left: 20 }, { id: "ST", cat: "FWD", top: 11, left: 50 },
+    { id: "FR", cat: "FWD", top: 19, left: 80 },
+  ],
+  "3-5-2": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DCL", cat: "DEF", top: 76, left: 25 },
+    { id: "DC", cat: "DEF", top: 80, left: 50 }, { id: "DCR", cat: "DEF", top: 76, left: 75 },
+    { id: "ML", cat: "MID", top: 55, left: 8 }, { id: "MCL", cat: "MID", top: 58, left: 30 },
+    { id: "MC", cat: "MID", top: 60, left: 50 }, { id: "MCR", cat: "MID", top: 58, left: 70 },
+    { id: "MR", cat: "MID", top: 55, left: 92 }, { id: "STL", cat: "FWD", top: 14, left: 38 },
+    { id: "STR", cat: "FWD", top: 14, left: 62 },
+  ],
+  "3-4-2-1": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DCL", cat: "DEF", top: 76, left: 25 },
+    { id: "DC", cat: "DEF", top: 80, left: 50 }, { id: "DCR", cat: "DEF", top: 76, left: 75 },
+    { id: "ML", cat: "MID", top: 58, left: 10 }, { id: "MCL", cat: "MID", top: 60, left: 37 },
+    { id: "MCR", cat: "MID", top: 60, left: 63 }, { id: "MR", cat: "MID", top: 58, left: 90 },
+    { id: "AML", cat: "MID", top: 32, left: 32 }, { id: "AMR", cat: "MID", top: 32, left: 68 },
+    { id: "ST", cat: "FWD", top: 13, left: 50 },
+  ],
+  "3-4-1-2": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DCL", cat: "DEF", top: 76, left: 25 },
+    { id: "DC", cat: "DEF", top: 80, left: 50 }, { id: "DCR", cat: "DEF", top: 76, left: 75 },
+    { id: "ML", cat: "MID", top: 58, left: 10 }, { id: "MCL", cat: "MID", top: 60, left: 37 },
+    { id: "MCR", cat: "MID", top: 60, left: 63 }, { id: "MR", cat: "MID", top: 58, left: 90 },
+    { id: "AM", cat: "MID", top: 34, left: 50 }, { id: "STL", cat: "FWD", top: 14, left: 38 },
+    { id: "STR", cat: "FWD", top: 14, left: 62 },
+  ],
   "4-3-3": [
     { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 72, left: 14 },
     { id: "DCL", cat: "DEF", top: 77, left: 37 }, { id: "DCR", cat: "DEF", top: 77, left: 63 },
@@ -251,6 +283,14 @@ const FORMATIONS = {
     { id: "MC", cat: "MID", top: 55, left: 50 }, { id: "MCR", cat: "MID", top: 51, left: 73 },
     { id: "FL", cat: "FWD", top: 21, left: 18 }, { id: "ST", cat: "FWD", top: 13, left: 50 },
     { id: "FR", cat: "FWD", top: 21, left: 82 },
+  ],
+  "4-4-2": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 72, left: 14 },
+    { id: "DCL", cat: "DEF", top: 77, left: 37 }, { id: "DCR", cat: "DEF", top: 77, left: 63 },
+    { id: "DR", cat: "DEF", top: 72, left: 86 }, { id: "ML", cat: "MID", top: 54, left: 12 },
+    { id: "MCL", cat: "MID", top: 57, left: 37 }, { id: "MCR", cat: "MID", top: 57, left: 63 },
+    { id: "MR", cat: "MID", top: 54, left: 88 }, { id: "STL", cat: "FWD", top: 14, left: 38 },
+    { id: "STR", cat: "FWD", top: 14, left: 62 },
   ],
   "4-2-3-1": [
     { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 72, left: 14 },
@@ -260,13 +300,53 @@ const FORMATIONS = {
     { id: "MOC", cat: "MID", top: 31, left: 50 }, { id: "MOR", cat: "MID", top: 35, left: 82 },
     { id: "ST", cat: "FWD", top: 13, left: 50 },
   ],
-  "3-4-3": [
-    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DCL", cat: "DEF", top: 76, left: 25 },
-    { id: "DC", cat: "DEF", top: 80, left: 50 }, { id: "DCR", cat: "DEF", top: 76, left: 75 },
-    { id: "ML", cat: "MID", top: 53, left: 10 }, { id: "MCL", cat: "MID", top: 57, left: 37 },
-    { id: "MCR", cat: "MID", top: 57, left: 63 }, { id: "MR", cat: "MID", top: 53, left: 90 },
-    { id: "FL", cat: "FWD", top: 19, left: 20 }, { id: "ST", cat: "FWD", top: 11, left: 50 },
-    { id: "FR", cat: "FWD", top: 19, left: 80 },
+  "4-1-4-1": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 72, left: 14 },
+    { id: "DCL", cat: "DEF", top: 77, left: 37 }, { id: "DCR", cat: "DEF", top: 77, left: 63 },
+    { id: "DR", cat: "DEF", top: 72, left: 86 }, { id: "DM", cat: "MID", top: 62, left: 50 },
+    { id: "ML", cat: "MID", top: 42, left: 12 }, { id: "MCL", cat: "MID", top: 45, left: 37 },
+    { id: "MCR", cat: "MID", top: 45, left: 63 }, { id: "MR", cat: "MID", top: 42, left: 88 },
+    { id: "ST", cat: "FWD", top: 13, left: 50 },
+  ],
+  "4-3-1-2": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 72, left: 14 },
+    { id: "DCL", cat: "DEF", top: 77, left: 37 }, { id: "DCR", cat: "DEF", top: 77, left: 63 },
+    { id: "DR", cat: "DEF", top: 72, left: 86 }, { id: "MCL", cat: "MID", top: 57, left: 25 },
+    { id: "MC", cat: "MID", top: 60, left: 50 }, { id: "MCR", cat: "MID", top: 57, left: 75 },
+    { id: "AM", cat: "MID", top: 34, left: 50 }, { id: "STL", cat: "FWD", top: 14, left: 38 },
+    { id: "STR", cat: "FWD", top: 14, left: 62 },
+  ],
+  "4-5-1": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 72, left: 14 },
+    { id: "DCL", cat: "DEF", top: 77, left: 37 }, { id: "DCR", cat: "DEF", top: 77, left: 63 },
+    { id: "DR", cat: "DEF", top: 72, left: 86 }, { id: "ML", cat: "MID", top: 52, left: 8 },
+    { id: "MCL", cat: "MID", top: 55, left: 30 }, { id: "MC", cat: "MID", top: 57, left: 50 },
+    { id: "MCR", cat: "MID", top: 55, left: 70 }, { id: "MR", cat: "MID", top: 52, left: 92 },
+    { id: "ST", cat: "FWD", top: 12, left: 50 },
+  ],
+  "4-4-1-1": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 72, left: 14 },
+    { id: "DCL", cat: "DEF", top: 77, left: 37 }, { id: "DCR", cat: "DEF", top: 77, left: 63 },
+    { id: "DR", cat: "DEF", top: 72, left: 86 }, { id: "ML", cat: "MID", top: 54, left: 12 },
+    { id: "MCL", cat: "MID", top: 57, left: 37 }, { id: "MCR", cat: "MID", top: 57, left: 63 },
+    { id: "MR", cat: "MID", top: 54, left: 88 }, { id: "AM", cat: "MID", top: 28, left: 50 },
+    { id: "ST", cat: "FWD", top: 13, left: 50 },
+  ],
+  "5-3-2": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 74, left: 10 },
+    { id: "DCL", cat: "DEF", top: 79, left: 30 }, { id: "DC", cat: "DEF", top: 81, left: 50 },
+    { id: "DCR", cat: "DEF", top: 79, left: 70 }, { id: "DR", cat: "DEF", top: 74, left: 90 },
+    { id: "MCL", cat: "MID", top: 55, left: 25 }, { id: "MC", cat: "MID", top: 58, left: 50 },
+    { id: "MCR", cat: "MID", top: 55, left: 75 }, { id: "STL", cat: "FWD", top: 14, left: 38 },
+    { id: "STR", cat: "FWD", top: 14, left: 62 },
+  ],
+  "5-4-1": [
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 74, left: 10 },
+    { id: "DCL", cat: "DEF", top: 79, left: 30 }, { id: "DC", cat: "DEF", top: 81, left: 50 },
+    { id: "DCR", cat: "DEF", top: 79, left: 70 }, { id: "DR", cat: "DEF", top: 74, left: 90 },
+    { id: "ML", cat: "MID", top: 52, left: 12 }, { id: "MCL", cat: "MID", top: 55, left: 37 },
+    { id: "MCR", cat: "MID", top: 55, left: 63 }, { id: "MR", cat: "MID", top: 52, left: 88 },
+    { id: "ST", cat: "FWD", top: 12, left: 50 },
   ],
 };
 
@@ -494,7 +574,7 @@ function FaisTonMercato() {
     const c = CLUBS.find((x) => x.id === clubId) || dynamicClubs[clubId];
     if (!c) return;
     setDataSource("loading");
-    setSquad(FALLBACK_SQUADS[clubId] || []);
+    setSquad([]);
     setTransferBudget(START_TRANSFER_BUDGET);
     setDncgSold(0);
     setMarketPool(MARKET_POOL);
@@ -523,6 +603,7 @@ function FaisTonMercato() {
       setDataSource("live");
     } catch (err) {
       setLiveError(err.message || "Erreur inconnue");
+      setSquad(FALLBACK_SQUADS[clubId] || []); // vrai secours, seulement si l'appel a réellement échoué
       setDataSource("demo");
     }
   };
@@ -1172,15 +1253,19 @@ function FaisTonMercato() {
           </>)}
         </>)}
 
-        {view === "squad" && club && (<>
+        {view === "squad" && club && dataSource === "loading" && squad.length === 0 && (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <div className="ft-hero-mark">⚽</div>
+            <div className="ft-row-sub" style={{ marginTop: 8 }}>Chargement de l'effectif de {club.name}…</div>
+          </div>
+        )}
+        {view === "squad" && club && !(dataSource === "loading" && squad.length === 0) && (<>
           <div className="ft-head">
             <ClubCrest club={club} size={44} logoUrl={logosCache[activeKey]?.logo} />
             <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach || logosCache[activeKey]?.coach || "inconnu"}</div></div>
-            <div className="ft-formations">
-              {Object.keys(FORMATIONS).map((f) => (
-                <button key={f} className={`ft-fbtn ${f === formation ? "ft-fbtn-active" : ""}`} onClick={() => setFormation(f)}>{f}</button>
-              ))}
-            </div>
+            <select className="ft-formation-select" value={formation} onChange={(e) => setFormation(e.target.value)}>
+              {Object.keys(FORMATIONS).map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
           </div>
           <div className="ft-budget">
             <Icon>💰</Icon>
@@ -1522,6 +1607,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-club { font-family:'Anton',sans-serif; font-size:19px; letter-spacing:0.3px; line-height:1; }
   .ft-coach { font-size:11px; color:var(--muted); margin-top:3px; }
   .ft-formations { display:flex; gap:6px; margin-left:auto; }
+  .ft-formation-select { margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
+    background:var(--gold); color:var(--ink); border:1px solid var(--gold); padding:7px 10px; border-radius:8px; cursor:pointer; }
   .ft-fbtn { font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; background:var(--panel);
     border:1px solid var(--line); color:var(--muted); padding:6px 8px; border-radius:8px; cursor:pointer; transition:all .15s ease; }
   .ft-fbtn:hover { color:var(--chalk); }
