@@ -448,6 +448,8 @@ function makeTable(club) {
 /* ==================================================================== */
 function FaisTonMercato() {
   const [activeKey, setActiveKey] = useState(null);
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("ftm-theme") || "dark"; } catch (e) { return "dark"; } });
+  useEffect(() => { try { localStorage.setItem("ftm-theme", theme); } catch (e) {} document.body.style.background = theme === "light" ? "#EAEDEA" : "#05080a"; }, [theme]);
   const [dynamicClubs, setDynamicClubs] = useState({});
   const club = activeKey ? (CLUBS.find((c) => c.id === activeKey) || dynamicClubs[activeKey] || null) : null;
   const [view, setView] = useState("home");
@@ -1205,11 +1207,12 @@ function FaisTonMercato() {
   }
 
   return (
-    <div className="ft-root" style={{ "--cc1": club?.c1 || "#E6B450", "--cc2": club?.c2 || "#2F9E74" }}>
+    <div className={`ft-root ${theme === "light" ? "theme-light" : ""}`} style={{ "--cc1": club?.c1 || "#E6B450", "--cc2": club?.c2 || "#2F9E74" }}>
       <nav className="ft-nav">
         <button className={`ft-nav-btn ${view === "home" ? "ft-active" : ""}`} onClick={() => setView("home")}><Icon>🏠</Icon> Accueil</button>
         <button className={`ft-nav-btn ${view === "squad" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("squad")}><Icon>👕</Icon> Compositeur</button>
         <button className={`ft-nav-btn ${view === "market" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("market")}><Icon>🔁</Icon> Marché</button>
+        <button className="ft-account-btn" onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} title="Changer de thème"><Icon>{theme === "light" ? "🌙" : "☀️"}</Icon></button>
         <button className="ft-account-btn" onClick={() => { setShowAuth(true); loadMySaves(); }}><Icon>👤</Icon></button>
       </nav>
       {flash && <div className="ft-flash">{flash}</div>}
@@ -1638,7 +1641,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
 
   .ft-root { --ink:#0A0E12; --panel:#121A17; --panel-2:#182420; --chalk:#F4F7F1; --muted:#9FB0A6;
     --gold:#E6B450; --coral:#E4573D; --green:#2F9E74; --line:rgba(244,247,241,0.14);
-    --pitch-a:#0F4A38; --pitch-b:#125640; color-scheme: dark;
+    --pitch-a:#0F4A38; --pitch-b:#125640; --ink-fixed:#0A0E12; color-scheme: dark;
     background:var(--ink); color:var(--chalk); font-family:'Inter',sans-serif;
     border-radius:18px; max-width:560px; width:100%; margin:0 auto; overflow:hidden; border:1px solid var(--line);
     box-shadow:0 20px 60px rgba(0,0,0,0.45); position:relative; }
@@ -1663,11 +1666,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
     .ft-grid { grid-template-columns:repeat(6, 1fr); }
   }
   .ft-root-narrow { max-width:560px !important; }
+
+  .ft-root.theme-light {
+    --ink:#F3F5F3; --panel:#FFFFFF; --panel-2:#E8ECE9; --chalk:#0A0E12; --muted:#5B6B65;
+    --line:rgba(10,14,18,0.12); color-scheme: light;
+  }
+  .ft-root.theme-light { box-shadow:0 20px 60px rgba(0,0,0,0.12); }
+  .ft-root.theme-light .ft-jersey { box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+  .ft-root.theme-light .ft-skeleton { background:linear-gradient(90deg, #E8ECE9, #F3F5F3, #E8ECE9); }
   .ft-nav { display:flex; gap:4px; padding:12px 14px; border-bottom:1px solid var(--line); background:var(--panel); align-items:center; }
   .ft-nav-btn { display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; color:var(--muted);
     background:transparent; border:none; padding:7px 10px; border-radius:8px; cursor:pointer; transition:all .15s ease; }
   .ft-nav-btn:hover { color:var(--chalk); background:var(--panel-2); }
-  .ft-nav-btn.ft-active { background:var(--gold); color:var(--ink); }
+  .ft-nav-btn.ft-active { background:var(--gold); color:var(--ink-fixed); }
   .ft-account-btn { margin-left:auto; background:var(--panel-2); border:1px solid var(--line); border-radius:50%;
     width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--chalk);
     transition:all .15s ease; }
@@ -1740,11 +1751,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
     font-size:13px; padding:6px 10px; cursor:pointer; flex-shrink:0; }
   .ft-back-btn:hover { border-color:var(--gold); color:var(--gold); }
   .ft-formation-select { margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
-    background:var(--gold); color:var(--ink); border:1px solid var(--gold); padding:7px 10px; border-radius:8px; cursor:pointer; }
+    background:var(--gold); color:var(--ink-fixed); border:1px solid var(--gold); padding:7px 10px; border-radius:8px; cursor:pointer; }
   .ft-fbtn { font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; background:var(--panel);
     border:1px solid var(--line); color:var(--muted); padding:6px 8px; border-radius:8px; cursor:pointer; transition:all .15s ease; }
   .ft-fbtn:hover { color:var(--chalk); }
-  .ft-fbtn-active { background:var(--gold); color:var(--ink); border-color:var(--gold); }
+  .ft-fbtn-active { background:var(--gold); color:var(--ink-fixed); border-color:var(--gold); }
   .ft-budget { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:11.5px; }
   .ft-budget-track { flex:1; height:8px; border-radius:5px; background:var(--panel); overflow:hidden; }
   .ft-budget-fill { height:100%; background:linear-gradient(90deg,var(--gold),#F2CE86); transition:width .4s ease; }
@@ -1840,11 +1851,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-mini-btn { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; border-radius:7px; padding:6px 8px;
     border:1px solid var(--line); background:var(--panel-2); color:var(--chalk); cursor:pointer; white-space:nowrap; transition:all .15s ease; }
   .ft-mini-btn:hover:not(:disabled) { transform:translateY(-1px); }
-  .ft-mini-btn.ft-buy { background:var(--gold); color:var(--ink); border-color:var(--gold); }
+  .ft-mini-btn.ft-buy { background:var(--gold); color:var(--ink-fixed); border-color:var(--gold); }
   .ft-mini-btn.ft-sell { background:var(--coral); color:#fff; border-color:var(--coral); }
   .ft-mini-btn:disabled { opacity:0.35; cursor:not-allowed; }
   .ft-oa, .ft-tag-sale, .ft-tag-loan { font-family:'IBM Plex Mono',monospace; font-size:8px; border-radius:5px; padding:1px 5px; margin-left:5px; }
-  .ft-oa { background:var(--gold); color:var(--ink); }
+  .ft-oa { background:var(--gold); color:var(--ink-fixed); }
   .ft-tag-sale { background:rgba(228,87,61,0.25); color:#f3b8ac; }
   .ft-tag-loan { background:rgba(47,158,116,0.25); color:#9fe3c4; }
 
@@ -1855,25 +1866,25 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
     border-radius:7px; padding:7px 8px; font-size:11px; font-family:'Inter',sans-serif; width:100%; }
   .ft-custom-actions { display:flex; gap:6px; }
 
-  .ft-flash { position:sticky; top:0; z-index:5; background:var(--gold); color:var(--ink); font-size:11.5px; font-weight:600;
+  .ft-flash { position:sticky; top:0; z-index:5; background:var(--gold); color:var(--ink-fixed); font-size:11.5px; font-weight:600;
     padding:8px 14px; text-align:center; animation: ftFadeIn .2s ease; }
   .ft-footnote { display:flex; gap:6px; font-size:10.5px; color:var(--muted); margin-top:14px; line-height:1.4; }
 
-  .ft-share-card { background:linear-gradient(160deg, var(--panel) 0%, var(--ink) 100%); border:1px solid var(--line);
-    border-radius:16px; padding:20px; margin:16px 0 10px; }
+  .ft-share-card { background:linear-gradient(160deg, #121A17 0%, #0A0E12 100%); border:1px solid rgba(244,247,241,0.14);
+    border-radius:16px; padding:20px; margin:16px 0 10px; color:#F4F7F1; }
   .ft-share-head { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
   .ft-share-club { font-family:'Anton',sans-serif; font-size:17px; line-height:1; }
-  .ft-share-sub { font-size:10px; color:var(--muted); margin-top:2px; }
-  .ft-share-title { font-family:'Anton',sans-serif; font-size:14px; color:var(--gold); text-align:center; margin:10px 0 14px; }
+  .ft-share-sub { font-size:10px; color:#9FB0A6; margin-top:2px; }
+  .ft-share-title { font-family:'Anton',sans-serif; font-size:14px; color:#E6B450; text-align:center; margin:10px 0 14px; }
   .ft-share-scores { display:flex; gap:10px; margin-bottom:16px; }
-  .ft-share-score-box { flex:1; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:10px; text-align:center; }
-  .ft-share-score-num { font-family:'Anton',sans-serif; font-size:26px; color:var(--chalk); }
-  .ft-share-score-label { font-family:'IBM Plex Mono',monospace; font-size:8.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
+  .ft-share-score-box { flex:1; background:#182420; border:1px solid rgba(244,247,241,0.14); border-radius:10px; padding:10px; text-align:center; }
+  .ft-share-score-num { font-family:'Anton',sans-serif; font-size:26px; color:#F4F7F1; }
+  .ft-share-score-label { font-family:'IBM Plex Mono',monospace; font-size:8.5px; color:#9FB0A6; text-transform:uppercase; letter-spacing:0.06em; }
   .ft-share-xi { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:14px; }
-  .ft-share-player { display:flex; align-items:center; gap:6px; font-size:10.5px; background:var(--panel-2); border-radius:6px; padding:5px 8px; }
+  .ft-share-player { display:flex; align-items:center; gap:6px; font-size:10.5px; background:#182420; border-radius:6px; padding:5px 8px; color:#F4F7F1; }
   .ft-share-num { width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;
     font-family:'IBM Plex Mono',monospace; font-size:8px; font-weight:700; flex-shrink:0; }
-  .ft-share-footer { text-align:center; font-family:'Anton',sans-serif; font-size:11px; color:var(--muted); letter-spacing:0.05em; }
+  .ft-share-footer { text-align:center; font-family:'Anton',sans-serif; font-size:11px; color:#9FB0A6; letter-spacing:0.05em; }
   .ft-trophies { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
   .ft-trophy { display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--gold); border-radius:20px;
     padding:6px 12px 6px 8px; font-size:10.5px; font-weight:600; cursor:help; }
