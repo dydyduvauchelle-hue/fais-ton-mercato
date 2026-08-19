@@ -316,25 +316,25 @@ function Skeleton({ count = 6 }) {
   );
 }
 
-function makeFixtures(clubId) {
-  const club = CLUBS.find((c) => c.id === clubId);
-  const others = RIVALS.filter((r) => !club.matchNames.some((n) => r.name.toLowerCase().includes(n))).slice(0, 10);
+function makeFixtures(club) {
+  const others = RIVALS.filter((r) => !(club.matchNames || []).some((n) => r.name.toLowerCase().includes(n)) && !r.name.toLowerCase().includes(club.name.toLowerCase())).slice(0, 10);
   return others.map((r, i) => ({ id: i, opponent: r.name, oppRating: r.rating, home: i % 2 === 0, played: false, result: null }));
 }
-function makeTable(clubId) {
-  const club = CLUBS.find((c) => c.id === clubId);
-  const others = RIVALS.filter((r) => !club.matchNames.some((n) => r.name.toLowerCase().includes(n))).slice(0, 10);
+function makeTable(club) {
+  const others = RIVALS.filter((r) => !(club.matchNames || []).some((n) => r.name.toLowerCase().includes(n)) && !r.name.toLowerCase().includes(club.name.toLowerCase())).slice(0, 10);
   return [{ name: club.name, pts: 0, gf: 0, ga: 0, played: 0, self: true }, ...others.map((r) => ({ name: r.name, pts: 0, gf: 0, ga: 0, played: 0 }))];
 }
 
 /* ==================================================================== */
 function FaisTonMercato() {
   const [activeKey, setActiveKey] = useState(null);
-  const club = activeKey ? CLUBS.find((c) => c.id === activeKey) : null;
+  const [dynamicClubs, setDynamicClubs] = useState({});
+  const club = activeKey ? (CLUBS.find((c) => c.id === activeKey) || dynamicClubs[activeKey] || null) : null;
   const [view, setView] = useState("home");
   const [homeStage, setHomeStage] = useState("country");
   const [browseCountry, setBrowseCountry] = useState(null);
   const [browseDivision, setBrowseDivision] = useState(null);
+  const [divisionCache, setDivisionCache] = useState({});
   const [clubsList, setClubsList] = useState([]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [browseError, setBrowseError] = useState("");
@@ -442,7 +442,7 @@ function FaisTonMercato() {
     if (!session) return;
     setSavesLoading(true);
     try {
-      const { data } = await sb.from("saves").select("club_key, updated_at").eq("user_id", session.user.id).order("updated_at", { ascending: false });
+      const { data } = await sb.from("saves").select("club_key, updated_at, data").eq("user_id", session.user.id).order("updated_at", { ascending: false });
       setMySaves(data || []);
     } catch (e) {} finally { setSavesLoading(false); }
   };
@@ -476,20 +476,21 @@ function FaisTonMercato() {
   const freshLoadRef = React.useRef(true);
 
   const loadFreshClub = async (clubId) => {
-    const c = CLUBS.find((x) => x.id === clubId);
+    const c = CLUBS.find((x) => x.id === clubId) || dynamicClubs[clubId];
     if (!c) return;
     setDataSource("loading");
     setSquad(FALLBACK_SQUADS[clubId] || []);
     setTransferBudget(START_TRANSFER_BUDGET);
     setDncgSold(0);
     setMarketPool(MARKET_POOL);
-    setFixtures(makeFixtures(clubId));
-    setTable(makeTable(clubId));
+    setFixtures(makeFixtures(c));
+    setTable(makeTable(c));
     setTransferLog([]);
     setSeasonResult(null);
     setMercatoRevealed(false);
     try {
-      const r = await fetch(`/api/squad?team=${encodeURIComponent(c.apiQuery)}`);
+      const url = c.apiTeamId ? `/api/squad?teamId=${c.apiTeamId}` : `/api/squad?team=${encodeURIComponent(c.apiQuery)}`;
+      const r = await fetch(url);
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       const team = data.team;
@@ -523,8 +524,9 @@ function FaisTonMercato() {
 
   const saveGame = async () => {
     if (!activeKey) return;
+    const isCurated = CLUBS.find((c) => c.id === activeKey);
     const payload = { squad, formation, transferBudget, dncgSold, marketPool, logo: logosCache[activeKey]?.logo || null, coach: logosCache[activeKey]?.coach || null,
-      fixtures, table, transferLog, seasonResult, mercatoRevealed };
+      fixtures, table, transferLog, seasonResult, mercatoRevealed, clubMeta: isCurated ? null : dynamicClubs[activeKey] || null };
     try { localStorage.setItem(`ftm-save-${activeKey}`, JSON.stringify(payload)); } catch (e) {}
     if (session) {
       await sb.from("saves").upsert({ user_id: session.user.id, club_key: activeKey, data: payload, updated_at: new Date().toISOString() });
@@ -541,14 +543,18 @@ function FaisTonMercato() {
     } catch (e) {}
     if (!saved) { setFlash("Sauvegarde introuvable."); return; }
     freshLoadRef.current = false;
+    if (saved.clubMeta && !CLUBS.find((c) => c.id === clubKey)) {
+      setDynamicClubs((prev) => ({ ...prev, [clubKey]: saved.clubMeta }));
+    }
+    const resolvedClub = CLUBS.find((c) => c.id === clubKey) || saved.clubMeta || { name: clubKey, matchNames: [] };
     setSquad(saved.squad || []);
     setFormation(saved.formation || "4-3-3");
     setTransferBudget(saved.transferBudget ?? START_TRANSFER_BUDGET);
     setDncgSold(saved.dncgSold ?? 0);
     setMarketPool(saved.marketPool || MARKET_POOL);
     setLogosCache((prev) => ({ ...prev, [clubKey]: { logo: saved.logo || null, coach: saved.coach || null } }));
-    setFixtures(saved.fixtures || makeFixtures(clubKey));
-    setTable(saved.table || makeTable(clubKey));
+    setFixtures(saved.fixtures || makeFixtures(resolvedClub));
+    setTable(saved.table || makeTable(resolvedClub));
     setTransferLog(saved.transferLog || []);
     setSeasonResult(saved.seasonResult || null);
     setMercatoRevealed(saved.mercatoRevealed || false);
@@ -595,27 +601,53 @@ function FaisTonMercato() {
     }
   };
 
-  const openDivision = async (div) => {
-    setBrowseDivision(div); setHomeStage("clubs"); setBrowseLoading(true); setBrowseError(""); setClubsList([]);
+  const fetchDivision = async (div) => {
+    if (divisionCache[div.id]) return divisionCache[div.id];
     const curatedFallback = () => CLUBS.filter((c) => c.leagueId === div.id).map((c) => ({ id: c.id, name: c.name, logo: null }));
+    let entry;
     try {
       const r = await fetch(`/api/teams-by-league?league=${encodeURIComponent(div.name)}`);
       const data = await r.json();
-      if (data.error || !data.teams || data.teams.length === 0) throw new Error("indisponible");
-      setClubsList(data.teams);
+      if (data.error || !data.teams || data.teams.length === 0) throw new Error(data.error || "indisponible");
+      entry = { teams: data.teams, logo: data.league?.logo || null, error: null };
     } catch (err) {
       const fb = curatedFallback();
-      setClubsList(fb);
-      setBrowseError(fb.length > 0
-        ? "Mode test — API-Football indisponible, clubs préparés à l'avance affichés en attendant (à retirer une fois reconnecté)."
-        : "Aucun club disponible pour cette division pour le moment.");
-    } finally { setBrowseLoading(false); }
+      entry = { teams: fb, logo: null, error: fb.length > 0
+        ? "Mode secours — clubs préparés à l'avance affichés (division pas encore disponible sur ton plan)."
+        : `Aucun club disponible pour cette division (${err.message}).` };
+    }
+    setDivisionCache((prev) => ({ ...prev, [div.id]: entry }));
+    return entry;
+  };
+
+  useEffect(() => {
+    if (homeStage !== "leagues" || !browseCountry) return;
+    DIVISIONS.filter((d) => d.country === browseCountry).forEach((d) => { if (!divisionCache[d.id]) fetchDivision(d); });
+  }, [homeStage, browseCountry]);
+
+  const openDivision = async (div) => {
+    setBrowseDivision(div); setHomeStage("clubs"); setBrowseLoading(true); setBrowseError(""); setClubsList([]);
+    const entry = await fetchDivision(div);
+    setClubsList(entry.teams);
+    setBrowseError(entry.error || "");
+    setBrowseLoading(false);
   };
   const openClub = (team) => {
     const curated = CLUBS.find((c) => c.matchNames.some((n) => team.name.toLowerCase().includes(n)));
-    if (!curated) { setFlash(`${team.name} — bientôt jouable, reviens plus tard !`); return; }
+    let key = curated?.id;
+    if (!curated) {
+      key = `t${team.id}`;
+      setDynamicClubs((prev) => ({
+        ...prev,
+        [key]: {
+          id: key, name: team.name, code: team.name.slice(0, 4).toUpperCase(),
+          c1: "#1C2C5B", c2: "#F4F7F1", apiTeamId: team.id, coach: null,
+          salaryCap: 60, valueCap: 300, dncg: false, matchNames: [],
+        },
+      }));
+    }
     freshLoadRef.current = true;
-    setActiveKey(curated.id);
+    setActiveKey(key);
     setHomeStage("country");
     setBrowseCountry(null);
     setView("squad");
@@ -957,7 +989,7 @@ function FaisTonMercato() {
                 const c = CLUBS.find((x) => x.id === s.club_key);
                 return (
                   <div key={s.club_key} className="ft-row">
-                    <div><div className="ft-row-name">{c ? c.name : s.club_key}</div><div className="ft-row-sub">Mise à jour : {new Date(s.updated_at).toLocaleDateString()}</div></div>
+                    <div><div className="ft-row-name">{c ? c.name : (s.data?.clubMeta?.name || s.club_key)}</div><div className="ft-row-sub">Mise à jour : {new Date(s.updated_at).toLocaleDateString()}</div></div>
                     <div className="ft-row-actions">
                       <button className="ft-mini-btn ft-buy" onClick={() => openSavedGame(s.club_key)}>Ouvrir</button>
                       <button className="ft-mini-btn ft-sell" onClick={() => deleteSave(s.club_key)}>Supprimer</button>
@@ -1001,7 +1033,9 @@ function FaisTonMercato() {
             <div className="ft-grid">
               {DIVISIONS.filter((d) => d.country === browseCountry).map((d) => (
                 <button key={d.id} className="ft-club-card" onClick={() => openDivision(d)}>
-                  <div className="ft-crest" style={{ width: 40, height: 45, background: `linear-gradient(165deg, ${d.c1} 0%, ${d.c1} 55%, ${d.c2} 55%, ${d.c2} 100%)`, fontSize: 10 }}>{d.code}</div>
+                  {divisionCache[d.id]?.logo
+                    ? <img src={divisionCache[d.id].logo} width={40} height={40} alt="" style={{ objectFit: "contain" }} />
+                    : <div className="ft-crest" style={{ width: 40, height: 45, background: `linear-gradient(165deg, ${d.c1} 0%, ${d.c1} 55%, ${d.c2} 55%, ${d.c2} 100%)`, fontSize: 10 }}>{d.code}</div>}
                   <span className="ft-club-name">{d.name}</span>
                 </button>
               ))}
@@ -1015,16 +1049,12 @@ function FaisTonMercato() {
             {browseError && <div className="ft-row-sub">{browseError}</div>}
             {!browseLoading && (
               <div className="ft-grid">
-                {clubsList.map((t) => {
-                  const playable = CLUBS.some((c) => c.matchNames.some((n) => t.name.toLowerCase().includes(n)));
-                  return (
-                    <button key={t.id} className={`ft-club-card ${!playable ? "ft-club-card-soon" : ""}`} onClick={() => openClub(t)}>
-                      {t.logo ? <img src={t.logo} width={40} height={40} alt="" style={{ objectFit: "contain" }} /> : <div className="ft-crest" style={{ width: 40, height: 45, background: "#1C2C5B", fontSize: 10 }}>{t.name.slice(0, 3).toUpperCase()}</div>}
-                      <span className="ft-club-name">{t.name}</span>
-                      {!playable && <span className="ft-soon">bientôt</span>}
-                    </button>
-                  );
-                })}
+                {clubsList.map((t) => (
+                  <button key={t.id} className="ft-club-card" onClick={() => openClub(t)}>
+                    {t.logo ? <img src={t.logo} width={40} height={40} alt="" style={{ objectFit: "contain" }} /> : <div className="ft-crest" style={{ width: 40, height: 45, background: "#1C2C5B", fontSize: 10 }}>{t.name.slice(0, 3).toUpperCase()}</div>}
+                    <span className="ft-club-name">{t.name}</span>
+                  </button>
+                ))}
               </div>
             )}
           </>)}

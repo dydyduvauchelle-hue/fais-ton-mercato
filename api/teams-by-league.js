@@ -24,7 +24,7 @@ module.exports = async (req, res) => {
     const teams = (td.data || []).map((t) => ({ id: t.id, name: t.name, logo: t.image_path }));
 
     res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate");
-    res.status(200).json({ teams });
+    res.status(200).json({ teams, league: { name: league.name, logo: league.image_path } });
   } catch (err) {
     res.status(500).json({ error: err.message || "Erreur serveur inconnue." });
   }
