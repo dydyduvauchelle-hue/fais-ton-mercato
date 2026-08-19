@@ -26,18 +26,27 @@ module.exports = async (req, res) => {
     const data = await r.json();
     if (!r.ok) throw new Error(data.message || `Erreur Sportmonks (${r.status}).`);
 
-    const results = (data.data || []).slice(0, 5).map((p) => {
+    const results = await Promise.all((data.data || []).slice(0, 5).map(async (p) => {
       const currentTeam = (p.teams || []).find((t) => !t.end) || (p.teams || [])[0];
+      let number = null;
+      if (currentTeam?.team?.id) {
+        try {
+          const sr = await fetch(`${BASE}/squads/teams/${currentTeam.team.id}?api_token=${TOKEN}`);
+          const sd = await sr.json();
+          const entry = (sd.data || []).find((s) => s.player_id === p.id || s.player?.id === p.id);
+          if (entry) number = entry.jersey_number || null;
+        } catch (e) {}
+      }
       return {
         id: p.id,
         name: p.display_name || p.name,
         age: ageFromDOB(p.date_of_birth),
         photo: p.image_path || null,
         position: normalizeCat(p.position?.name),
-        number: null,
+        number,
         team: currentTeam?.team?.name || null,
       };
-    });
+    }));
 
     res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate");
     res.status(200).json({ results });

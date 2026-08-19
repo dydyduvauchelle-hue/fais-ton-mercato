@@ -208,25 +208,30 @@ const START_TRANSFER_BUDGET = 10;
 const DNCG_TARGET = 80;
 
 const DIVISIONS = [
-  { id: 61, country: "France", name: "Ligue 1", code: "L1", c1: "#0B2545", c2: "#2AABE2" },
-  { id: 62, country: "France", name: "Ligue 2", code: "L2", c1: "#0B2545", c2: "#F4F7F1" },
-  { id: 63, country: "France", name: "Ligue 3", code: "L3", c1: "#0B2545", c2: "#C8102E" },
-  { id: 39, country: "England", name: "Premier League", code: "PL", c1: "#38003C", c2: "#00FF87" },
-  { id: 40, country: "England", name: "Championship", code: "CH", c1: "#1C2C5B", c2: "#E2001A" },
-  { id: 78, country: "Germany", name: "Bundesliga", code: "BL1", c1: "#000000", c2: "#D3010C" },
-  { id: 79, country: "Germany", name: "2. Bundesliga", code: "BL2", c1: "#000000", c2: "#F4F7F1" },
-  { id: 140, country: "Spain", name: "La Liga", code: "LL", c1: "#EE8707", c2: "#000000" },
-  { id: 141, country: "Spain", name: "La Liga 2", code: "LL2", c1: "#EE8707", c2: "#F4F7F1" },
-  { id: 135, country: "Italy", name: "Serie A", code: "SA", c1: "#003D7C", c2: "#F4F7F1" },
-  { id: 136, country: "Italy", name: "Serie B", code: "SB", c1: "#003D7C", c2: "#2AABE2" },
-  { id: 72, country: "Netherlands", name: "Eredivisie", code: "ERE", c1: "#FF6600", c2: "#000000" },
-  { id: 462, country: "Portugal", name: "Liga Portugal", code: "LPT", c1: "#006600", c2: "#FF0000" },
-  { id: 591, country: "Switzerland", name: "Super League", code: "SUI", c1: "#FF0000", c2: "#F4F7F1" },
-  { id: 253, country: "USA", name: "Major League Soccer", code: "MLS", c1: "#002B5C", c2: "#C8102E" },
-  { id: 307, country: "SaudiArabia", name: "Pro League", code: "SPL", c1: "#006C35", c2: "#F4F7F1" },
-  { id: 600, country: "Turkey", name: "Süper Lig", code: "TUR", c1: "#E30A17", c2: "#F4F7F1" },
-  { id: 128, country: "Argentina", name: "Liga Profesional de Fútbol", code: "ARG", c1: "#75AADB", c2: "#F4F7F1" },
+  { id: 61, country: "France", name: "Ligue 1", code: "L1", c1: "#0B2545", c2: "#2AABE2", tier: 1 },
+  { id: 62, country: "France", name: "Ligue 2", code: "L2", c1: "#0B2545", c2: "#F4F7F1", tier: 2 },
+  { id: 63, country: "France", name: "Ligue 3", code: "L3", c1: "#0B2545", c2: "#C8102E", tier: 3 },
+  { id: 39, country: "England", name: "Premier League", code: "PL", c1: "#38003C", c2: "#00FF87", tier: 1 },
+  { id: 40, country: "England", name: "Championship", code: "CH", c1: "#1C2C5B", c2: "#E2001A", tier: 2 },
+  { id: 78, country: "Germany", name: "Bundesliga", code: "BL1", c1: "#000000", c2: "#D3010C", tier: 1 },
+  { id: 79, country: "Germany", name: "2. Bundesliga", code: "BL2", c1: "#000000", c2: "#F4F7F1", tier: 2 },
+  { id: 140, country: "Spain", name: "La Liga", code: "LL", c1: "#EE8707", c2: "#000000", tier: 1 },
+  { id: 141, country: "Spain", name: "La Liga 2", code: "LL2", c1: "#EE8707", c2: "#F4F7F1", tier: 2 },
+  { id: 135, country: "Italy", name: "Serie A", code: "SA", c1: "#003D7C", c2: "#F4F7F1", tier: 1 },
+  { id: 136, country: "Italy", name: "Serie B", code: "SB", c1: "#003D7C", c2: "#2AABE2", tier: 2 },
+  { id: 72, country: "Netherlands", name: "Eredivisie", code: "ERE", c1: "#FF6600", c2: "#000000", tier: 2 },
+  { id: 462, country: "Portugal", name: "Liga Portugal", code: "LPT", c1: "#006600", c2: "#FF0000", tier: 2 },
+  { id: 591, country: "Switzerland", name: "Super League", code: "SUI", c1: "#FF0000", c2: "#F4F7F1", tier: 2 },
+  { id: 253, country: "USA", name: "Major League Soccer", code: "MLS", c1: "#002B5C", c2: "#C8102E", tier: 2 },
+  { id: 307, country: "SaudiArabia", name: "Pro League", code: "SPL", c1: "#006C35", c2: "#F4F7F1", tier: 2 },
+  { id: 600, country: "Turkey", name: "Süper Lig", code: "TUR", c1: "#E30A17", c2: "#F4F7F1", tier: 2 },
+  { id: 128, country: "Argentina", name: "Liga Profesional de Fútbol", code: "ARG", c1: "#75AADB", c2: "#F4F7F1", tier: 2 },
 ];
+const TIER_DEFAULTS = {
+  1: { valueCap: 350, salaryCap: 70, valueMultiplier: 1 },
+  2: { valueCap: 65, salaryCap: 15, valueMultiplier: 0.22 },
+  3: { valueCap: 12, salaryCap: 4, valueMultiplier: 0.06 },
+};
 const COUNTRY_META = {
   France: { label: "France", flagCode: "fr" },
   England: { label: "Angleterre", flagCode: "gb-eng" },
@@ -516,7 +521,7 @@ function FaisTonMercato() {
     setAuthBusy(false);
     setAuthMsg(error ? error.message : "Email renvoyé — vérifie ta boîte (et les spams).");
   };
-  const doSignOut = async () => { await sb.auth.signOut(); setFlash("Déconnecté."); };
+  const doSignOut = async () => { await sb.auth.signOut(); window.location.reload(); };
 
   const [justConfirmed, setJustConfirmed] = useState(false);
   useEffect(() => {
@@ -577,7 +582,7 @@ function FaisTonMercato() {
     setSquad([]);
     setTransferBudget(START_TRANSFER_BUDGET);
     setDncgSold(0);
-    setMarketPool(MARKET_POOL);
+    setMarketPool(CLUBS.find((x) => x.id === clubId) ? MARKET_POOL : []);
     setFixtures(makeFixtures(c));
     setTable(makeTable(c));
     setTransferLog([]);
@@ -592,10 +597,11 @@ function FaisTonMercato() {
       const players = data.players || [];
       if (!team || players.length === 0) throw new Error("Réponse vide");
       setLogosCache((prev) => ({ ...prev, [clubId]: { logo: team.logo || null, coach: data.coach || null } }));
+      const mult = c.valueMultiplier ?? 1;
       const mapped = players.map((p) => {
         const cat = POS_MAP[p.position] || p.position || "MID";
         return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
-          age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
+          age: p.age || null, value: Math.max(0.1, Math.round(estimateValue(p.age, cat, p.number) * mult * 10) / 10), photo: p.photo || null,
           contractEnd: contractFor(p.age || 25), verified: true,
           onLoan: false, loanOA: false, loanedIn: false };
       });
@@ -728,17 +734,18 @@ function FaisTonMercato() {
     setBrowseError(entry.error || "");
     setBrowseLoading(false);
   };
-  const openClub = (team) => {
+  const openClub = (team, tier) => {
     const curated = CLUBS.find((c) => c.matchNames.some((n) => team.name.toLowerCase().includes(n)));
     let key = curated?.id;
     if (!curated) {
       key = `t${team.id}`;
+      const td = TIER_DEFAULTS[tier] || TIER_DEFAULTS[2];
       setDynamicClubs((prev) => ({
         ...prev,
         [key]: {
           id: key, name: team.name, code: team.name.slice(0, 4).toUpperCase(),
           c1: "#1C2C5B", c2: "#F4F7F1", apiTeamId: team.id, coach: null,
-          salaryCap: 60, valueCap: 300, dncg: false, matchNames: [],
+          salaryCap: td.salaryCap, valueCap: td.valueCap, valueMultiplier: td.valueMultiplier, dncg: false, matchNames: [],
         },
       }));
     }
@@ -1113,12 +1120,11 @@ function FaisTonMercato() {
   }
 
   return (
-    <div className="ft-root">
+    <div className="ft-root" style={{ "--cc1": club?.c1 || "#E6B450", "--cc2": club?.c2 || "#2F9E74" }}>
       <nav className="ft-nav">
         <button className={`ft-nav-btn ${view === "home" ? "ft-active" : ""}`} onClick={() => setView("home")}><Icon>🏠</Icon> Accueil</button>
         <button className={`ft-nav-btn ${view === "squad" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("squad")}><Icon>👕</Icon> Compositeur</button>
         <button className={`ft-nav-btn ${view === "market" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("market")}><Icon>🔁</Icon> Marché</button>
-        <button className={`ft-nav-btn ${view === "season" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("season")}><Icon>📅</Icon> Saison</button>
         <button className="ft-account-btn" onClick={() => { setShowAuth(true); loadMySaves(); }}><Icon>👤</Icon></button>
       </nav>
       {flash && <div className="ft-flash">{flash}</div>}
@@ -1243,7 +1249,7 @@ function FaisTonMercato() {
             {!browseLoading && (
               <div className="ft-grid">
                 {clubsList.map((t) => (
-                  <button key={t.id} className="ft-club-card" onClick={() => openClub(t)}>
+                  <button key={t.id} className="ft-club-card" onClick={() => openClub(t, browseDivision?.tier)}>
                     {t.logo ? <img src={t.logo} width={40} height={40} alt="" style={{ objectFit: "contain" }} /> : <div className="ft-crest" style={{ width: 40, height: 45, background: "#1C2C5B", fontSize: 10 }}>{t.name.slice(0, 3).toUpperCase()}</div>}
                     <span className="ft-club-name">{t.name}</span>
                   </button>
@@ -1253,14 +1259,9 @@ function FaisTonMercato() {
           </>)}
         </>)}
 
-        {view === "squad" && club && dataSource === "loading" && squad.length === 0 && (
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <div className="ft-hero-mark">⚽</div>
-            <div className="ft-row-sub" style={{ marginTop: 8 }}>Chargement de l'effectif de {club.name}…</div>
-          </div>
-        )}
-        {view === "squad" && club && !(dataSource === "loading" && squad.length === 0) && (<>
+        {view === "squad" && club && (<>
           <div className="ft-head">
+            <button className="ft-back-btn" onClick={() => setView("home")}>←</button>
             <ClubCrest club={club} size={44} logoUrl={logosCache[activeKey]?.logo} />
             <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach || logosCache[activeKey]?.coach || "inconnu"}</div></div>
             <select className="ft-formation-select" value={formation} onChange={(e) => setFormation(e.target.value)}>
@@ -1387,6 +1388,7 @@ function FaisTonMercato() {
         </>)}
 
         {view === "market" && club && (<>
+          <button className="ft-back-btn" style={{ marginBottom: 12 }} onClick={() => setView("home")}>← Accueil</button>
           {club.dncg && (
             <div className={`ft-dncg ${dncgDone ? "ft-dncg-done" : ""}`}>
               <Icon>{dncgDone ? "✅" : "⚠️"}</Icon>
@@ -1399,14 +1401,18 @@ function FaisTonMercato() {
           <div className="ft-market-budget"><Icon>💰</Icon> Budget mercato disponible<b>{transferBudget}M€</b></div>
 
           <div className="ft-section-label"><span>Pistes du mercato</span></div>
-          <div className="ft-search"><Icon>🔍</Icon><input placeholder="Filtrer la liste…" value={marketSearch} onChange={(e) => setMarketSearch(e.target.value)} /></div>
-          {filteredMarket.map((p) => (
-            <div key={p.id} className="ft-row">
-              <div className="ft-row-num">{p.cat}</div>
-              <div><div className="ft-row-name">{p.name}</div><div className="ft-row-sub">{p.pos} · {p.age} ans</div></div>
-              <div className="ft-row-actions"><button className="ft-mini-btn ft-buy" disabled={transferBudget < p.value} onClick={() => buyPlayer(p)}>Acheter · {fmtValue(p.value)}</button></div>
-            </div>
-          ))}
+          {marketPool.length === 0 ? (
+            <div className="ft-row-sub" style={{ marginBottom: 10 }}>Pas de pistes pré-suggérées pour ce club — utilise la recherche ci-dessous pour trouver de vrais joueurs.</div>
+          ) : (<>
+            <div className="ft-search"><Icon>🔍</Icon><input placeholder="Filtrer la liste…" value={marketSearch} onChange={(e) => setMarketSearch(e.target.value)} /></div>
+            {filteredMarket.map((p) => (
+              <div key={p.id} className="ft-row">
+                <div className="ft-row-num">{p.cat}</div>
+                <div><div className="ft-row-name">{p.name}</div><div className="ft-row-sub">{p.pos} · {p.age} ans</div></div>
+                <div className="ft-row-actions"><button className="ft-mini-btn ft-buy" disabled={transferBudget < p.value} onClick={() => buyPlayer(p)}>Acheter · {fmtValue(p.value)}</button></div>
+              </div>
+            ))}
+          </>)}
 
           <div className="ft-custom">
             <div className="ft-custom-title"><Icon>🔎</Icon> Chercher un vrai joueur</div>
@@ -1603,10 +1609,17 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-skeleton { height:88px; border-radius:12px; background:linear-gradient(90deg, var(--panel), var(--panel-2), var(--panel));
     background-size:200% 100%; animation: ftPulse 1.4s ease-in-out infinite; }
 
-  .ft-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .ft-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; position:relative; padding:10px 4px; border-radius:12px; overflow:hidden; }
+  .ft-head::before { content:''; position:absolute; inset:0; z-index:-1;
+    background: radial-gradient(ellipse 140px 90px at 15% 0%, var(--cc1) 0%, transparent 65%),
+                radial-gradient(ellipse 140px 90px at 85% 0%, var(--cc2) 0%, transparent 65%);
+    opacity:0.22; }
   .ft-club { font-family:'Anton',sans-serif; font-size:19px; letter-spacing:0.3px; line-height:1; }
   .ft-coach { font-size:11px; color:var(--muted); margin-top:3px; }
   .ft-formations { display:flex; gap:6px; margin-left:auto; }
+  .ft-back-btn { background:var(--panel); border:1px solid var(--line); color:var(--chalk); border-radius:8px;
+    font-size:13px; padding:6px 10px; cursor:pointer; flex-shrink:0; }
+  .ft-back-btn:hover { border-color:var(--gold); color:var(--gold); }
   .ft-formation-select { margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
     background:var(--gold); color:var(--ink); border:1px solid var(--gold); padding:7px 10px; border-radius:8px; cursor:pointer; }
   .ft-fbtn { font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; background:var(--panel);
@@ -1620,7 +1633,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-budget-label { font-family:'IBM Plex Mono',monospace; color:var(--muted); white-space:nowrap; }
 
   .ft-pitch { position:relative; width:100%; aspect-ratio:3/4.1; border-radius:14px; overflow:hidden; margin-top:6px;
-    background:repeating-linear-gradient(180deg, var(--pitch-a) 0 11%, var(--pitch-b) 11% 22%); border:1px solid var(--line); }
+    background:repeating-linear-gradient(180deg, var(--pitch-a) 0 11%, var(--pitch-b) 11% 22%); border:1px solid var(--line);
+    box-shadow:0 0 50px -14px var(--cc1), 0 0 50px -14px var(--cc2); }
   .ft-pitch::before { content:''; position:absolute; inset:6%; border:1.5px solid rgba(244,247,241,0.35); border-radius:2px; }
   .ft-pitch::after { content:''; position:absolute; top:50%; left:50%; width:26%; aspect-ratio:1;
     border:1.5px solid rgba(244,247,241,0.35); border-radius:50%; transform:translate(-50%,-50%); }
