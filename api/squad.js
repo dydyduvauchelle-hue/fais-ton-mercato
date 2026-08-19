@@ -12,6 +12,27 @@ function normalizeCat(posName) {
   if (p.includes("wing") || p.includes("forward") || p.includes("striker") || p.includes("attack")) return "FWD";
   return "MID";
 }
+function subPosCode(posName) {
+  const p = (posName || "").toLowerCase();
+  if (!p) return "";
+  if (p.includes("keeper")) return "G";
+  if (p.includes("right-back") || p.includes("right back")) return "DD";
+  if (p.includes("left-back") || p.includes("left back")) return "DG";
+  if (p.includes("centre-back") || p.includes("center-back") || p.includes("centre back")) return "DC";
+  if (p.includes("defensive midfield")) return "MDC";
+  if (p.includes("attacking midfield")) return "MOC";
+  if (p.includes("central midfield") || p.includes("centre midfield")) return "MC";
+  if (p.includes("right midfield")) return "MD";
+  if (p.includes("left midfield")) return "MG";
+  if (p.includes("right wing")) return "AD";
+  if (p.includes("left wing")) return "AG";
+  if (p.includes("second striker")) return "SA";
+  if (p.includes("centre-forward") || p.includes("striker") || p.includes("forward")) return "BU";
+  if (p.includes("defen")) return "DC";
+  if (p.includes("midfield")) return "MC";
+  if (p.includes("attack")) return "AT";
+  return "";
+}
 function ageFromDOB(dob) {
   if (!dob) return null;
   const diff = Date.now() - new Date(dob).getTime();
@@ -47,7 +68,7 @@ module.exports = async (req, res) => {
     }
 
     const [squadRes, teamRes] = await Promise.all([
-      fetch(`${BASE}/squads/teams/${id}?api_token=${TOKEN}&include=player.position`),
+      fetch(`${BASE}/squads/teams/${id}?api_token=${TOKEN}&include=player.position;player.detailedPosition`),
       fetch(`${BASE}/teams/${id}?api_token=${TOKEN}&include=coaches`),
     ]);
     const squadData = await squadRes.json();
@@ -63,6 +84,7 @@ module.exports = async (req, res) => {
         age: ageFromDOB(s.player.date_of_birth),
         photo: s.player.image_path || null,
         position: normalizeCat(s.player.position?.name),
+        subPos: subPosCode(s.player.detailedPosition?.name || s.player.position?.name),
       }));
 
     const teamObj = teamData.data || { id, name: fallbackName, image_path: fallbackLogo };

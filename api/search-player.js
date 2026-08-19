@@ -8,6 +8,27 @@ function normalizeCat(posName) {
   if (p.includes("wing") || p.includes("forward") || p.includes("striker") || p.includes("attack")) return "FWD";
   return "MID";
 }
+function subPosCode(posName) {
+  const p = (posName || "").toLowerCase();
+  if (!p) return "";
+  if (p.includes("keeper")) return "G";
+  if (p.includes("right-back") || p.includes("right back")) return "DD";
+  if (p.includes("left-back") || p.includes("left back")) return "DG";
+  if (p.includes("centre-back") || p.includes("center-back") || p.includes("centre back")) return "DC";
+  if (p.includes("defensive midfield")) return "MDC";
+  if (p.includes("attacking midfield")) return "MOC";
+  if (p.includes("central midfield") || p.includes("centre midfield")) return "MC";
+  if (p.includes("right midfield")) return "MD";
+  if (p.includes("left midfield")) return "MG";
+  if (p.includes("right wing")) return "AD";
+  if (p.includes("left wing")) return "AG";
+  if (p.includes("second striker")) return "SA";
+  if (p.includes("centre-forward") || p.includes("striker") || p.includes("forward")) return "BU";
+  if (p.includes("defen")) return "DC";
+  if (p.includes("midfield")) return "MC";
+  if (p.includes("attack")) return "AT";
+  return "";
+}
 function ageFromDOB(dob) {
   if (!dob) return null;
   const diff = Date.now() - new Date(dob).getTime();
@@ -22,7 +43,7 @@ module.exports = async (req, res) => {
   if (q.length < 3) { res.status(400).json({ error: "Recherche trop courte (3 caractères minimum)." }); return; }
 
   try {
-    const r = await fetch(`${BASE}/players/search/${encodeURIComponent(q)}?api_token=${TOKEN}&include=position;teams.team`);
+    const r = await fetch(`${BASE}/players/search/${encodeURIComponent(q)}?api_token=${TOKEN}&include=position;detailedPosition;teams.team`);
     const data = await r.json();
     if (!r.ok) throw new Error(data.message || `Erreur Sportmonks (${r.status}).`);
 
@@ -43,6 +64,7 @@ module.exports = async (req, res) => {
         age: ageFromDOB(p.date_of_birth),
         photo: p.image_path || null,
         position: normalizeCat(p.position?.name),
+        subPos: subPosCode(p.detailedPosition?.name || p.position?.name),
         number,
         team: currentTeam?.team?.name || null,
       };

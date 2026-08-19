@@ -36,22 +36,22 @@ const Icon = ({ children, size = 14 }) => (
 const CLUBS = [
   {
     id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545",
-    apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55, valueCap: 230, dncg: true,
+    apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55, valueCap: 230, dncg: true, startBudget: 10,
     matchNames: ["marseille"], leagueId: 61,
   },
   {
     id: "psg", name: "Paris Saint-Germain", code: "PSG", c1: "#041E42", c2: "#DA291C",
-    apiQuery: "Paris Saint Germain", coach: "Luis Enrique", salaryCap: 180, valueCap: 900, dncg: false,
+    apiQuery: "Paris Saint Germain", coach: "Luis Enrique", salaryCap: 180, valueCap: 900, dncg: false, startBudget: 70,
     matchNames: ["paris saint", "psg"], leagueId: 61,
   },
   {
     id: "barca", name: "FC Barcelone", code: "FCB", c1: "#A50044", c2: "#004D98",
-    apiQuery: "Barcelona", coach: "Hansi Flick", salaryCap: 190, valueCap: 950, dncg: false,
+    apiQuery: "Barcelona", coach: "Hansi Flick", salaryCap: 190, valueCap: 950, dncg: false, startBudget: 55,
     matchNames: ["barcelona", "barcelone"], leagueId: 140,
   },
   {
     id: "arsenal", name: "Arsenal FC", code: "ARS", c1: "#EF0107", c2: "#023474",
-    apiQuery: "Arsenal", coach: "Mikel Arteta", salaryCap: 195, valueCap: 980, dncg: false,
+    apiQuery: "Arsenal", coach: "Mikel Arteta", salaryCap: 195, valueCap: 980, dncg: false, startBudget: 60,
     matchNames: ["arsenal"], leagueId: 39,
   },
 ];
@@ -209,28 +209,30 @@ const DNCG_TARGET = 80;
 
 const DIVISIONS = [
   { id: 61, country: "France", name: "Ligue 1", code: "L1", c1: "#0B2545", c2: "#2AABE2", tier: 1 },
-  { id: 62, country: "France", name: "Ligue 2", code: "L2", c1: "#0B2545", c2: "#F4F7F1", tier: 2 },
-  { id: 63, country: "France", name: "Ligue 3", code: "L3", c1: "#0B2545", c2: "#C8102E", tier: 3 },
+  { id: 62, country: "France", name: "Ligue 2", code: "L2", c1: "#0B2545", c2: "#F4F7F1", tier: 4 },
+  { id: 63, country: "France", name: "Ligue 3", code: "L3", c1: "#0B2545", c2: "#C8102E", tier: 5 },
   { id: 39, country: "England", name: "Premier League", code: "PL", c1: "#38003C", c2: "#00FF87", tier: 1 },
   { id: 40, country: "England", name: "Championship", code: "CH", c1: "#1C2C5B", c2: "#E2001A", tier: 2 },
   { id: 78, country: "Germany", name: "Bundesliga", code: "BL1", c1: "#000000", c2: "#D3010C", tier: 1 },
   { id: 79, country: "Germany", name: "2. Bundesliga", code: "BL2", c1: "#000000", c2: "#F4F7F1", tier: 2 },
   { id: 140, country: "Spain", name: "La Liga", code: "LL", c1: "#EE8707", c2: "#000000", tier: 1 },
-  { id: 141, country: "Spain", name: "La Liga 2", code: "LL2", c1: "#EE8707", c2: "#F4F7F1", tier: 2 },
+  { id: 141, country: "Spain", name: "La Liga 2", code: "LL2", c1: "#EE8707", c2: "#F4F7F1", tier: 4 },
   { id: 135, country: "Italy", name: "Serie A", code: "SA", c1: "#003D7C", c2: "#F4F7F1", tier: 1 },
-  { id: 136, country: "Italy", name: "Serie B", code: "SB", c1: "#003D7C", c2: "#2AABE2", tier: 2 },
-  { id: 72, country: "Netherlands", name: "Eredivisie", code: "ERE", c1: "#FF6600", c2: "#000000", tier: 2 },
-  { id: 462, country: "Portugal", name: "Liga Portugal", code: "LPT", c1: "#006600", c2: "#FF0000", tier: 2 },
-  { id: 591, country: "Switzerland", name: "Super League", code: "SUI", c1: "#FF0000", c2: "#F4F7F1", tier: 2 },
+  { id: 136, country: "Italy", name: "Serie B", code: "SB", c1: "#003D7C", c2: "#2AABE2", tier: 4 },
+  { id: 72, country: "Netherlands", name: "Eredivisie", code: "ERE", c1: "#FF6600", c2: "#000000", tier: 3 },
+  { id: 462, country: "Portugal", name: "Liga Portugal", code: "LPT", c1: "#006600", c2: "#FF0000", tier: 3 },
+  { id: 591, country: "Switzerland", name: "Super League", code: "SUI", c1: "#FF0000", c2: "#F4F7F1", tier: 3 },
   { id: 253, country: "USA", name: "Major League Soccer", code: "MLS", c1: "#002B5C", c2: "#C8102E", tier: 2 },
   { id: 307, country: "SaudiArabia", name: "Pro League", code: "SPL", c1: "#006C35", c2: "#F4F7F1", tier: 2 },
   { id: 600, country: "Turkey", name: "Süper Lig", code: "TUR", c1: "#E30A17", c2: "#F4F7F1", tier: 2 },
-  { id: 128, country: "Argentina", name: "Liga Profesional de Fútbol", code: "ARG", c1: "#75AADB", c2: "#F4F7F1", tier: 2 },
+  { id: 128, country: "Argentina", name: "Liga Profesional de Fútbol", code: "ARG", c1: "#75AADB", c2: "#F4F7F1", tier: 3 },
 ];
 const TIER_DEFAULTS = {
-  1: { valueCap: 350, salaryCap: 70, valueMultiplier: 1 },
-  2: { valueCap: 65, salaryCap: 15, valueMultiplier: 0.22 },
-  3: { valueCap: 12, salaryCap: 4, valueMultiplier: 0.06 },
+  1: { valueCap: 350, salaryCap: 70, valueMultiplier: 1, startBudget: 60 },
+  2: { valueCap: 120, salaryCap: 25, valueMultiplier: 0.35, startBudget: 15 },
+  3: { valueCap: 40, salaryCap: 9, valueMultiplier: 0.12, startBudget: 6 },
+  4: { valueCap: 9, salaryCap: 2.5, valueMultiplier: 0.045, startBudget: 2 },
+  5: { valueCap: 3, salaryCap: 0.8, valueMultiplier: 0.018, startBudget: 0.5 },
 };
 const COUNTRY_META = {
   France: { label: "France", flagCode: "fr" },
@@ -371,6 +373,24 @@ function assignSlots(squad, formationKey) {
 function shortName(name) { const parts = name.split(" "); return parts.length > 1 ? parts[parts.length - 1] : name; }
 function fmtValue(v) { return v == null ? "n.c." : `${v}M€`; }
 
+function subPosFromLabel(label) {
+  const l = (label || "").toLowerCase();
+  if (l.includes("gardien")) return "G";
+  if (l.includes("arrière droit") || l.includes("arriere droit")) return "DD";
+  if (l.includes("arrière gauche") || l.includes("arriere gauche")) return "DG";
+  if (l.includes("défenseur central") || l.includes("defenseur central")) return "DC";
+  if (l.includes("milieu défensif") || l.includes("milieu defensif")) return "MDC";
+  if (l.includes("milieu offensif")) return "MOC";
+  if (l.includes("milieu central")) return "MC";
+  if (l.includes("ailier droit")) return "AD";
+  if (l.includes("ailier gauche")) return "AG";
+  if (l.includes("ailier")) return "AI";
+  if (l.includes("avant-centre") || l.includes("attaquant")) return "BU";
+  return "";
+}
+function getSubPos(p) { return p.subPos || subPosFromLabel(p.pos) || ""; }
+function posLine(p) { const sp = getSubPos(p); return sp ? `${CAT_LABEL[p.cat] || p.cat} · ${sp}` : (CAT_LABEL[p.cat] || p.cat); }
+
 function estimateValue(age, cat, num) {
   const base = { GK: 8, DEF: 12, MID: 15, FWD: 18 }[cat] || 10;
   let ageMult;
@@ -448,7 +468,7 @@ function FaisTonMercato() {
   const [selected, setSelected] = useState(null);
   const [flash, setFlash] = useState("");
   const [marketSearch, setMarketSearch] = useState("");
-  const [customForm, setCustomForm] = useState({ name: "", cat: "MID", age: 24, value: 10, num: "", photo: null, verified: false, fromClub: "" });
+  const [customForm, setCustomForm] = useState({ name: "", cat: "MID", age: 24, value: 10, num: "", photo: null, verified: false, fromClub: "", subPos: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -580,9 +600,9 @@ function FaisTonMercato() {
     if (!c) return;
     setDataSource("loading");
     setSquad([]);
-    setTransferBudget(START_TRANSFER_BUDGET);
+    setTransferBudget(c.startBudget ?? START_TRANSFER_BUDGET);
     setDncgSold(0);
-    setMarketPool(CLUBS.find((x) => x.id === clubId) ? MARKET_POOL : []);
+    setMarketPool([]);
     setFixtures(makeFixtures(c));
     setTable(makeTable(c));
     setTransferLog([]);
@@ -600,7 +620,7 @@ function FaisTonMercato() {
       const mult = c.valueMultiplier ?? 1;
       const mapped = players.map((p) => {
         const cat = POS_MAP[p.position] || p.position || "MID";
-        return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
+        return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "", subPos: p.subPos || "",
           age: p.age || null, value: Math.max(0.1, Math.round(estimateValue(p.age, cat, p.number) * mult * 10) / 10), photo: p.photo || null,
           contractEnd: contractFor(p.age || 25), verified: true,
           onLoan: false, loanOA: false, loanedIn: false };
@@ -689,7 +709,7 @@ function FaisTonMercato() {
       setLogosCache((prev) => ({ ...prev, [activeKey]: { logo: team.logo || null, coach: data.coach || null } }));
       const mapped = players.map((p) => {
         const cat = POS_MAP[p.position] || p.position || "MID";
-        return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "",
+        return { id: `live-${p.id}`, name: p.name, num: p.number || 0, cat, pos: p.position || "", subPos: p.subPos || "",
           age: p.age || null, value: estimateValue(p.age, cat, p.number), photo: p.photo || null,
           contractEnd: contractFor(p.age || 25), verified: true,
           onLoan: false, loanOA: false, loanedIn: false };
@@ -745,7 +765,7 @@ function FaisTonMercato() {
         [key]: {
           id: key, name: team.name, code: team.name.slice(0, 4).toUpperCase(),
           c1: "#1C2C5B", c2: "#F4F7F1", apiTeamId: team.id, coach: null,
-          salaryCap: td.salaryCap, valueCap: td.valueCap, valueMultiplier: td.valueMultiplier, dncg: false, matchNames: [],
+          salaryCap: td.salaryCap, valueCap: td.valueCap, valueMultiplier: td.valueMultiplier, startBudget: td.startBudget, dncg: false, matchNames: [],
         },
       }));
     }
@@ -759,6 +779,16 @@ function FaisTonMercato() {
   useEffect(() => { setAssignment(assignSlots(squad, formation)); setSelected(null); }, [formation, squad]);
 
   const slots = FORMATIONS[formation];
+  useEffect(() => {
+    const onDragOver = (e) => {
+      const threshold = 90, y = e.clientY, h = window.innerHeight;
+      if (y < threshold) window.scrollBy(0, -14);
+      else if (y > h - threshold) window.scrollBy(0, 14);
+    };
+    window.addEventListener("dragover", onDragOver);
+    return () => window.removeEventListener("dragover", onDragOver);
+  }, []);
+
   const swapPlayers = (idA, idB) => {
     if (!idA || !idB || idA === idB) return;
     setAssignment((prev) => ({ ...prev, [idA]: prev[idB], [idB]: prev[idA] }));
@@ -924,7 +954,7 @@ function FaisTonMercato() {
 
   const addCustomPlayer = (mode) => {
     if (!customForm.name.trim()) return;
-    const base = { id: `custom-${Date.now()}`, name: customForm.name.trim(), cat: customForm.cat, pos: CAT_LABEL[customForm.cat],
+    const base = { id: `custom-${Date.now()}`, name: customForm.name.trim(), cat: customForm.cat, pos: CAT_LABEL[customForm.cat], subPos: customForm.subPos || "",
       age: Number(customForm.age) || 20, value: Number(customForm.value) || 1, photo: customForm.photo || null, verified: !!customForm.verified, fromClub: customForm.fromClub || "" };
     const rival = isRivalOrigin(club.name, base.fromClub);
     if (mode === "achat") { setMarketPool((m) => [...m, base]); setFlash(`${base.name} ajouté aux pistes du marché.${rival ? " ⚠️ Rival historique — signature très rare en vrai." : ""}`); }
@@ -936,7 +966,7 @@ function FaisTonMercato() {
       logTransfer(`Prêt entrant : ${base.name} (indemnité ${fee}M€).`);
       setFlash(`${base.name} arrive en prêt (indemnité ${fee}M€).${rival ? " ⚠️ Rival historique." : ""}`);
     }
-    setCustomForm({ name: "", cat: "MID", age: 24, value: 10, num: "", photo: null, verified: false, fromClub: "" });
+    setCustomForm({ name: "", cat: "MID", age: 24, value: 10, num: "", photo: null, verified: false, fromClub: "", subPos: "" });
     setSearchResults([]);
   };
   const searchPlayer = async () => {
@@ -952,7 +982,7 @@ function FaisTonMercato() {
   };
   const pickSearchResult = (r) => {
     setCustomForm({ name: r.name, cat: POS_MAP[r.position] || r.position || "MID", age: r.age || 20,
-      value: estimateValue(r.age, POS_MAP[r.position] || r.position || "MID", r.number || 0), num: r.number || "", photo: r.photo || null, verified: true, fromClub: r.team || "" });
+      value: estimateValue(r.age, POS_MAP[r.position] || r.position || "MID", r.number || 0), num: r.number || "", photo: r.photo || null, verified: true, fromClub: r.team || "", subPos: r.subPos || "" });
     setSearchResults([]);
     setFlash(`${r.name} — infos remplies automatiquement, vérifie avant d'ajouter.`);
   };
@@ -975,7 +1005,7 @@ function FaisTonMercato() {
         onDrop={onDropHere}>
         <Jersey club={club} num={player?.num} empty={isEmpty} />
         <span className="ft-chip-name">{player ? shortName(player.name) : CAT_LABEL[slot.cat]}</span>
-        {player && size !== "sm" && <span className="ft-chip-tag">{player.cat} · {fmtValue(player.value)}</span>}
+        {player && <span className="ft-chip-tag">{getSubPos(player) || player.cat}{size !== "sm" && ` · ${fmtValue(player.value)}`}</span>}
       </button>
     );
   };
@@ -1294,7 +1324,7 @@ function FaisTonMercato() {
                 draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", p.id)}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => { e.preventDefault(); swapPlayers(e.dataTransfer.getData("text/plain"), p.id); }}>
-                <span className="ft-res-num">{p.num}</span>{shortName(p.name)}
+                <span className="ft-res-num">{p.num}</span>{shortName(p.name)}<span className="ft-res-pos">{getSubPos(p) || p.cat}</span>
               </div>
             ))}
           </div>
@@ -1425,7 +1455,7 @@ function FaisTonMercato() {
                 {searchResults.map((r) => (
                   <div key={r.id} className="ft-search-result" onClick={() => pickSearchResult(r)}>
                     {r.photo ? <img className="ft-row-photo" src={r.photo} alt="" /> : <div className="ft-row-num">{POS_MAP[r.position] || r.position || "?"}</div>}
-                    <div><div className="ft-row-name">{r.name}</div><div className="ft-row-sub">{r.team || "club inconnu"} · {r.position || "poste inconnu"} · {r.age ? `${r.age} ans` : ""}</div></div>
+                    <div><div className="ft-row-name">{r.name}</div><div className="ft-row-sub">{r.team || "club inconnu"} · {CAT_LABEL[POS_MAP[r.position] || r.position] || r.position || "poste inconnu"}{r.subPos ? ` · ${r.subPos}` : ""} · {r.age ? `${r.age} ans` : ""}</div></div>
                   </div>
                 ))}
               </div>
@@ -1460,7 +1490,7 @@ function FaisTonMercato() {
                   {!p.verified && <span className="ft-tag-fictif">fictif</span>}
                   {isRivalOrigin(club.name, p.fromClub) && <span className="ft-tag-sale">rival historique</span>}
                 </div>
-                <div className="ft-row-sub">{p.pos} · {p.age ? `${p.age} ans` : "âge n.c."} · {fmtValue(p.value)} · contrat jusqu'en {p.contractEnd}</div>
+                <div className="ft-row-sub">{posLine(p)} · {p.age ? `${p.age} ans` : "âge n.c."} · {fmtValue(p.value)} · contrat jusqu'en {p.contractEnd}</div>
               </div>
               <div className="ft-row-actions">
                 {p.contractEnd <= 2027 && <button className="ft-mini-btn" onClick={() => renewContract(p)}>Prolonger</button>}
@@ -1671,6 +1701,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-res-pill.ft-chip-sel { outline:2px solid var(--chalk); }
   .ft-res-num { width:18px; height:18px; border-radius:50%; background:#0B2545; color:#fff; display:flex; align-items:center;
     justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; }
+  .ft-res-pos { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); margin-left:2px; }
 
   .ft-score { margin-top:20px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
   .ft-score-head { display:flex; align-items:center; gap:16px; margin-bottom:12px; }
