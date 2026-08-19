@@ -636,9 +636,9 @@ function FaisTonMercato() {
   };
 
   useEffect(() => {
-    if (homeStage !== "leagues" || !browseCountry) return;
-    DIVISIONS.filter((d) => d.country === browseCountry).forEach((d) => { if (!divisionCache[d.id]) fetchDivision(d); });
-  }, [homeStage, browseCountry]);
+    if (!session) return;
+    DIVISIONS.forEach((d) => { if (!divisionCache[d.id]) fetchDivision(d); });
+  }, [session]);
 
   const openDivision = async (div) => {
     setBrowseDivision(div); setHomeStage("clubs"); setBrowseLoading(true); setBrowseError(""); setClubsList([]);
@@ -738,6 +738,29 @@ function FaisTonMercato() {
     return { verifiedScore, sizeScore, spendScore, diversityScore, rivalPenalty, rivalSignings,
       total: Math.max(0, rawTotal), verifiedPct, squadSize: all.length };
   }, [squad, club]);
+
+  const advice = useMemo(() => {
+    if (!club) return [];
+    const tips = [];
+    const activeSquad = squad.filter((p) => !p.onLoan);
+    const gkCount = activeSquad.filter((p) => p.cat === "GK").length;
+    const defCount = activeSquad.filter((p) => p.cat === "DEF").length;
+    const midCount = activeSquad.filter((p) => p.cat === "MID").length;
+    const fwdCount = activeSquad.filter((p) => p.cat === "FWD").length;
+    if (gkCount < 2) tips.push("💡 Un seul gardien dans l'effectif — pas de vraie doublure en cas de blessure ou suspension.");
+    if (defCount < 5) tips.push("💡 Peu de défenseurs — la rotation risque d'être compliquée sur une saison complète.");
+    if (fwdCount >= defCount * 2) tips.push("💡 Beaucoup plus d'attaquants que de défenseurs — l'équilibre défensif pourrait en pâtir.");
+    if (midCount < 4) tips.push("💡 Milieu de terrain un peu court en effectif.");
+    const cats = ["GK", "DEF", "MID", "FWD"];
+    const benchList = bench;
+    cats.forEach((c) => {
+      if (!benchList.some((p) => p.cat === c) && activeSquad.some((p) => p.cat === c)) {
+        tips.push(`💡 Aucune doublure au poste ${CAT_LABEL[c].toLowerCase()} sur le banc.`);
+      }
+    });
+    if (score.hasValues && score.used > club.valueCap) tips.push("💡 La valeur de l'effectif dépasse le plafond indicatif du club.");
+    return tips.slice(0, 4);
+  }, [squad, club, bench, score]);
 
   const buyPlayer = (p) => {
     if (transferBudget < p.value) return;
@@ -913,6 +936,18 @@ function FaisTonMercato() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [clubSearch, setClubSearch] = useState("");
+  const [clubSearchResults, setClubSearchResults] = useState([]);
+  const [clubSearching, setClubSearching] = useState(false);
+  const searchClubs = async () => {
+    if (clubSearch.trim().length < 3) return;
+    setClubSearching(true);
+    try {
+      const r = await fetch(`/api/search-team?q=${encodeURIComponent(clubSearch.trim())}`);
+      const data = await r.json();
+      setClubSearchResults(data.results || []);
+    } catch (e) { setClubSearchResults([]); } finally { setClubSearching(false); }
+  };
 
   const submitToLeaderboard = async () => {
     if (!session || !club) return;
@@ -923,7 +958,24 @@ function FaisTonMercato() {
         mercato_score: Math.round(score.total), realism_score: Math.round(realism.total),
         global_avg: Math.round(globalAvg), updated_at: new Date().toISOString(),
       });
+      await sb.from("mercato_history").insert({
+        user_id: session.user.id, club_key: activeKey, club_name: club.name,
+        mercato_score: Math.round(score.total), realism_score: Math.round(realism.total),
+        global_avg: Math.round(globalAvg),
+      });
     } catch (e) {}
+  };
+
+  const [myHistory, setMyHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const loadHistory = async () => {
+    if (!session) return;
+    setHistoryLoading(true); setShowHistory(true);
+    try {
+      const { data } = await sb.from("mercato_history").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(15);
+      setMyHistory(data || []);
+    } catch (e) {} finally { setHistoryLoading(false); }
   };
 
   const loadLeaderboard = async () => {
@@ -999,6 +1051,7 @@ function FaisTonMercato() {
               <button className={`ft-account-tab ${accountTab === "profile" ? "ft-active" : ""}`} onClick={() => setAccountTab("profile")}>Profil</button>
               <button className={`ft-account-tab ${accountTab === "security" ? "ft-active" : ""}`} onClick={() => setAccountTab("security")}>Mot de passe</button>
               <button className={`ft-account-tab ${accountTab === "saves" ? "ft-active" : ""}`} onClick={() => setAccountTab("saves")}>Mes parties</button>
+              <button className={`ft-account-tab ${accountTab === "history" ? "ft-active" : ""}`} onClick={() => { setAccountTab("history"); loadHistory(); }}>Historique</button>
             </div>
 
             {accountTab === "profile" && (<>
@@ -1029,6 +1082,17 @@ function FaisTonMercato() {
               })}
             </>)}
 
+            {accountTab === "history" && (<>
+              {historyLoading && <div className="ft-row-sub">Chargement…</div>}
+              {!historyLoading && myHistory.length === 0 && <div className="ft-row-sub">Aucun mercato terminé pour l'instant.</div>}
+              {myHistory.map((h) => (
+                <div key={h.id} className="ft-row">
+                  <div><div className="ft-row-name">{h.club_name || h.club_key}</div><div className="ft-row-sub">{new Date(h.created_at).toLocaleDateString()} · Mercato {h.mercato_score} · Réalisme {h.realism_score}</div></div>
+                  <div className="ft-row-num">{h.global_avg}</div>
+                </div>
+              ))}
+            </>)}
+
             {profileMsg && <div className="ft-row-sub" style={{ color: "var(--gold)", marginTop: 8 }}>{profileMsg}</div>}
             <button className="ft-mini-btn ft-sell" style={{ marginTop: 16, width: "100%" }} onClick={doSignOut}>Se déconnecter</button>
             <div className="ft-modal-close" onClick={() => setShowAuth(false)}>✕</div>
@@ -1045,6 +1109,24 @@ function FaisTonMercato() {
             <h1>Fais ton Mercato</h1>
             <p>Choisis une division et prends les commandes d'un club</p>
           </div>
+
+          <div className="ft-search" style={{ marginBottom: 16 }}>
+            <Icon>🔍</Icon>
+            <input placeholder="Aller directement à un club…" value={clubSearch}
+              onChange={(e) => setClubSearch(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && searchClubs()} />
+            <button className="ft-mini-btn" onClick={searchClubs} disabled={clubSearching}>{clubSearching ? "…" : "Chercher"}</button>
+          </div>
+          {clubSearchResults.length > 0 && (
+            <div className="ft-search-results" style={{ marginBottom: 16 }}>
+              {clubSearchResults.map((t) => (
+                <div key={t.id} className="ft-search-result" onClick={() => { setClubSearchResults([]); setClubSearch(""); openClub(t); }}>
+                  {t.logo ? <img className="ft-row-photo" src={t.logo} alt="" /> : <div className="ft-row-num">{t.name.slice(0, 3).toUpperCase()}</div>}
+                  <div className="ft-row-name">{t.name}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {homeStage === "country" && (
             <div className="ft-grid">
@@ -1130,6 +1212,12 @@ function FaisTonMercato() {
               </div>
             ))}
           </div>
+
+          {advice.length > 0 && !mercatoRevealed && (
+            <div className="ft-advice">
+              {advice.map((a, i) => <div key={i} className="ft-advice-item">{a}</div>)}
+            </div>
+          )}
 
           {!mercatoRevealed ? (
             <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "12px 0", marginTop: 16, fontSize: 12 }} onClick={() => setMercatoRevealed(true)}>
@@ -1567,6 +1655,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-trophy { display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--gold); border-radius:20px;
     padding:6px 12px 6px 8px; font-size:10.5px; font-weight:600; cursor:help; }
   .ft-trophy-icon { font-size:14px; }
+  .ft-advice { display:flex; flex-direction:column; gap:6px; margin-top:14px; }
+  .ft-advice-item { font-size:10.5px; color:var(--muted); background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; padding:7px 10px; line-height:1.4; }
 
   .ft-tag-fictif { font-family:'IBM Plex Mono',monospace; font-size:8px; background:rgba(244,247,241,0.12); color:var(--muted);
     border-radius:5px; padding:1px 5px; margin-left:5px; }

@@ -41,3 +41,25 @@ create policy "Chacun met à jour uniquement sa propre ligne de classement"
 on leaderboard for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+-- Historique personnel des mercatos terminés (plusieurs entrées dans le temps,
+-- contrairement au classement qui ne garde que la meilleure/dernière ligne).
+create table if not exists mercato_history (
+  id bigint generated always as identity primary key,
+  user_id uuid references auth.users(id) on delete cascade,
+  club_key text not null,
+  club_name text,
+  mercato_score numeric not null,
+  realism_score numeric not null,
+  global_avg numeric not null,
+  created_at timestamptz default now()
+);
+alter table mercato_history enable row level security;
+drop policy if exists "Chacun voit uniquement son historique" on mercato_history;
+create policy "Chacun voit uniquement son historique"
+on mercato_history for select
+using (auth.uid() = user_id);
+drop policy if exists "Chacun ajoute uniquement dans son historique" on mercato_history;
+create policy "Chacun ajoute uniquement dans son historique"
+on mercato_history for insert
+with check (auth.uid() = user_id);
