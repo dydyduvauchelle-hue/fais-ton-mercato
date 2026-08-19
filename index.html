@@ -210,14 +210,22 @@ const DNCG_TARGET = 80;
 const DIVISIONS = [
   { id: 61, country: "France", name: "Ligue 1", code: "L1", c1: "#0B2545", c2: "#2AABE2" },
   { id: 62, country: "France", name: "Ligue 2", code: "L2", c1: "#0B2545", c2: "#F4F7F1" },
+  { id: 63, country: "France", name: "Ligue 3", code: "L3", c1: "#0B2545", c2: "#C8102E" },
   { id: 39, country: "England", name: "Premier League", code: "PL", c1: "#38003C", c2: "#00FF87" },
   { id: 40, country: "England", name: "Championship", code: "CH", c1: "#1C2C5B", c2: "#E2001A" },
   { id: 78, country: "Germany", name: "Bundesliga", code: "BL1", c1: "#000000", c2: "#D3010C" },
   { id: 79, country: "Germany", name: "2. Bundesliga", code: "BL2", c1: "#000000", c2: "#F4F7F1" },
   { id: 140, country: "Spain", name: "La Liga", code: "LL", c1: "#EE8707", c2: "#000000" },
-  { id: 141, country: "Spain", name: "Segunda División", code: "LL2", c1: "#EE8707", c2: "#F4F7F1" },
+  { id: 141, country: "Spain", name: "La Liga 2", code: "LL2", c1: "#EE8707", c2: "#F4F7F1" },
   { id: 135, country: "Italy", name: "Serie A", code: "SA", c1: "#003D7C", c2: "#F4F7F1" },
   { id: 136, country: "Italy", name: "Serie B", code: "SB", c1: "#003D7C", c2: "#2AABE2" },
+  { id: 72, country: "Netherlands", name: "Eredivisie", code: "ERE", c1: "#FF6600", c2: "#000000" },
+  { id: 462, country: "Portugal", name: "Liga Portugal", code: "LPT", c1: "#006600", c2: "#FF0000" },
+  { id: 591, country: "Switzerland", name: "Super League", code: "SUI", c1: "#FF0000", c2: "#F4F7F1" },
+  { id: 253, country: "USA", name: "Major League Soccer", code: "MLS", c1: "#002B5C", c2: "#C8102E" },
+  { id: 307, country: "SaudiArabia", name: "Pro League", code: "SPL", c1: "#006C35", c2: "#F4F7F1" },
+  { id: 600, country: "Turkey", name: "Süper Lig", code: "TUR", c1: "#E30A17", c2: "#F4F7F1" },
+  { id: 128, country: "Argentina", name: "Liga Profesional de Fútbol", code: "ARG", c1: "#75AADB", c2: "#F4F7F1" },
 ];
 const COUNTRY_META = {
   France: { label: "France", flagCode: "fr" },
@@ -225,8 +233,15 @@ const COUNTRY_META = {
   Germany: { label: "Allemagne", flagCode: "de" },
   Spain: { label: "Espagne", flagCode: "es" },
   Italy: { label: "Italie", flagCode: "it" },
+  Netherlands: { label: "Pays-Bas", flagCode: "nl" },
+  Portugal: { label: "Portugal", flagCode: "pt" },
+  Switzerland: { label: "Suisse", flagCode: "ch" },
+  USA: { label: "États-Unis", flagCode: "us" },
+  SaudiArabia: { label: "Arabie Saoudite", flagCode: "sa" },
+  Turkey: { label: "Türkiye", flagCode: "tr" },
+  Argentina: { label: "Argentine", flagCode: "ar" },
 };
-const COUNTRY_ORDER = ["France", "England", "Germany", "Spain", "Italy"];
+const COUNTRY_ORDER = ["France", "England", "Germany", "Spain", "Italy", "Netherlands", "Portugal", "Switzerland", "USA", "SaudiArabia", "Turkey", "Argentina"];
 
 const FORMATIONS = {
   "4-3-3": [
@@ -656,10 +671,14 @@ function FaisTonMercato() {
   useEffect(() => { setAssignment(assignSlots(squad, formation)); setSelected(null); }, [formation, squad]);
 
   const slots = FORMATIONS[formation];
+  const swapPlayers = (idA, idB) => {
+    if (!idA || !idB || idA === idB) return;
+    setAssignment((prev) => ({ ...prev, [idA]: prev[idB], [idB]: prev[idA] }));
+  };
   const handleSelect = (id) => {
     if (!selected) return setSelected(id);
     if (selected === id) return setSelected(null);
-    setAssignment((prev) => ({ ...prev, [selected]: prev[id], [id]: prev[selected] }));
+    swapPlayers(selected, id);
     setSelected(null);
   };
 
@@ -829,9 +848,20 @@ function FaisTonMercato() {
 
   const Chip = ({ player, slot, size = "md" }) => {
     const isEmpty = !player, isSelected = player && selected === player.id;
+    const onDropHere = (e) => {
+      e.preventDefault();
+      const draggedId = e.dataTransfer.getData("text/plain");
+      if (!draggedId) return;
+      if (player) swapPlayers(draggedId, player.id);
+      else if (slot) setAssignment((prev) => ({ ...prev, [draggedId]: slot.id }));
+    };
     return (
       <button className={`ft-chip ft-chip-${size} ${isSelected ? "ft-chip-sel" : ""} ${isEmpty ? "ft-chip-empty" : ""}`}
-        onClick={() => player && handleSelect(player.id)} disabled={isEmpty}>
+        onClick={() => player && handleSelect(player.id)}
+        draggable={!isEmpty}
+        onDragStart={(e) => player && e.dataTransfer.setData("text/plain", player.id)}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={onDropHere}>
         <Jersey club={club} num={player?.num} empty={isEmpty} />
         <span className="ft-chip-name">{player ? shortName(player.name) : CAT_LABEL[slot.cat]}</span>
         {player && size !== "sm" && <span className="ft-chip-tag">{player.cat} · {fmtValue(player.value)}</span>}
@@ -1092,7 +1122,10 @@ function FaisTonMercato() {
           <div className="ft-section-label"><span>Réserve</span></div>
           <div className="ft-reserve">
             {reserve.map((p) => (
-              <div key={p.id} className={`ft-res-pill ${selected === p.id ? "ft-chip-sel" : ""}`} onClick={() => handleSelect(p.id)}>
+              <div key={p.id} className={`ft-res-pill ${selected === p.id ? "ft-chip-sel" : ""}`} onClick={() => handleSelect(p.id)}
+                draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", p.id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); swapPlayers(e.dataTransfer.getData("text/plain"), p.id); }}>
                 <span className="ft-res-num">{p.num}</span>{shortName(p.name)}
               </div>
             ))}
@@ -1418,6 +1451,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
     border:1.5px solid rgba(244,247,241,0.35); border-radius:50%; transform:translate(-50%,-50%); }
   .ft-chip { position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center;
     background:none; border:none; cursor:pointer; padding:0; width:56px; color:var(--chalk); transition:transform .12s ease; }
+  .ft-chip:not(.ft-chip-empty) { cursor:grab; }
+  .ft-chip:not(.ft-chip-empty):active { cursor:grabbing; }
   .ft-chip:not(.ft-chip-empty):hover { transform:translate(-50%,-50%) scale(1.08); }
   .ft-bench-row .ft-chip { position:static; transform:none; flex-shrink:0; }
   .ft-bench-row .ft-chip:not(.ft-chip-empty):hover { transform:scale(1.08); }
