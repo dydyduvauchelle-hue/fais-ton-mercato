@@ -780,15 +780,53 @@ function FaisTonMercato() {
   useEffect(() => { setAssignment(assignSlots(squad, formation)); setSelected(null); setPrevAssignment(null); }, [formation, squad]);
 
   const slots = FORMATIONS[formation];
+  const autoScrollByY = (y) => {
+    const threshold = 90, h = window.innerHeight;
+    if (y < threshold) window.scrollBy(0, -14);
+    else if (y > h - threshold) window.scrollBy(0, 14);
+  };
   useEffect(() => {
-    const onDragOver = (e) => {
-      const threshold = 90, y = e.clientY, h = window.innerHeight;
-      if (y < threshold) window.scrollBy(0, -14);
-      else if (y > h - threshold) window.scrollBy(0, 14);
-    };
+    const onDragOver = (e) => autoScrollByY(e.clientY);
     window.addEventListener("dragover", onDragOver);
     return () => window.removeEventListener("dragover", onDragOver);
   }, []);
+
+  // Glisser-déposer tactile : l'API native HTML5 ne fonctionne pas sur mobile,
+  // on gère donc nous-mêmes appui-maintien + déplacement du doigt.
+  const touchDragRef = React.useRef({ id: null, moved: false, startX: 0, startY: 0 });
+  const [touchDragId, setTouchDragId] = useState(null);
+  const onChipTouchStart = (id) => (e) => {
+    const t = e.touches[0];
+    touchDragRef.current = { id, moved: false, startX: t.clientX, startY: t.clientY };
+  };
+  const onChipTouchMove = (e) => {
+    const drag = touchDragRef.current;
+    if (!drag.id) return;
+    const t = e.touches[0];
+    if (!drag.moved) {
+      const dx = Math.abs(t.clientX - drag.startX), dy = Math.abs(t.clientY - drag.startY);
+      if (dx > 10 || dy > 10) { drag.moved = true; setTouchDragId(drag.id); }
+    }
+    if (drag.moved) { e.preventDefault(); autoScrollByY(t.clientY); }
+  };
+  const onChipTouchEnd = (e) => {
+    const drag = touchDragRef.current;
+    if (!drag.id) return;
+    if (drag.moved) {
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el && el.closest("[data-player-id],[data-slot-id]");
+      if (target) {
+        const tp = target.getAttribute("data-player-id");
+        const ts = target.getAttribute("data-slot-id");
+        if (tp && tp !== drag.id) swapPlayers(drag.id, tp);
+        else if (ts) setAssignment((prev) => ({ ...prev, [drag.id]: ts }));
+      }
+    }
+    touchDragRef.current = { id: null, moved: false, startX: 0, startY: 0 };
+    setTouchDragId(null);
+  };
 
   const [prevAssignment, setPrevAssignment] = useState(null);
   const swapPlayers = (idA, idB) => {
@@ -1000,6 +1038,7 @@ function FaisTonMercato() {
 
   const Chip = ({ player, slot, size = "md" }) => {
     const isEmpty = !player, isSelected = player && selected === player.id;
+    const isTouchDragged = player && touchDragId === player.id;
     const onDropHere = (e) => {
       e.preventDefault();
       const draggedId = e.dataTransfer.getData("text/plain");
@@ -1008,12 +1047,17 @@ function FaisTonMercato() {
       else if (slot) setAssignment((prev) => ({ ...prev, [draggedId]: slot.id }));
     };
     return (
-      <button className={`ft-chip ft-chip-${size} ${isSelected ? "ft-chip-sel" : ""} ${isEmpty ? "ft-chip-empty" : ""}`}
+      <button className={`ft-chip ft-chip-${size} ${isSelected || isTouchDragged ? "ft-chip-sel" : ""} ${isEmpty ? "ft-chip-empty" : ""}`}
         onClick={() => player && handleSelect(player.id)}
         draggable={!isEmpty}
         onDragStart={(e) => player && e.dataTransfer.setData("text/plain", player.id)}
         onDragOver={(e) => e.preventDefault()}
-        onDrop={onDropHere}>
+        onDrop={onDropHere}
+        data-player-id={player ? player.id : undefined}
+        data-slot-id={!player && slot ? slot.id : undefined}
+        onTouchStart={player ? onChipTouchStart(player.id) : undefined}
+        onTouchMove={player ? onChipTouchMove : undefined}
+        onTouchEnd={player ? onChipTouchEnd : undefined}>
         <Jersey club={club} num={player?.num} empty={isEmpty} />
         <span className="ft-chip-name">{player ? shortName(player.name) : CAT_LABEL[slot.cat]}</span>
         {player && <span className="ft-chip-tag">{getSubPos(player) || player.cat}{size !== "sm" && ` · ${fmtValue(player.value)}`}</span>}
@@ -1333,10 +1377,12 @@ function FaisTonMercato() {
           <div className="ft-section-label"><span>Réserve</span></div>
           <div className="ft-reserve">
             {reserve.map((p) => (
-              <div key={p.id} className={`ft-res-pill ${selected === p.id ? "ft-chip-sel" : ""}`} onClick={() => handleSelect(p.id)}
+              <div key={p.id} className={`ft-res-pill ${selected === p.id || touchDragId === p.id ? "ft-chip-sel" : ""}`} onClick={() => handleSelect(p.id)}
                 draggable onDragStart={(e) => e.dataTransfer.setData("text/plain", p.id)}
                 onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); swapPlayers(e.dataTransfer.getData("text/plain"), p.id); }}>
+                onDrop={(e) => { e.preventDefault(); swapPlayers(e.dataTransfer.getData("text/plain"), p.id); }}
+                data-player-id={p.id}
+                onTouchStart={onChipTouchStart(p.id)} onTouchMove={onChipTouchMove} onTouchEnd={onChipTouchEnd}>
                 <span className="ft-res-num">{p.num}</span>{shortName(p.name)}<span className="ft-res-pos">{getSubPos(p) || p.cat}</span>
               </div>
             ))}
@@ -1712,7 +1758,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-pitch::after { content:''; position:absolute; top:50%; left:50%; width:26%; aspect-ratio:1;
     border:1.5px solid rgba(244,247,241,0.35); border-radius:50%; transform:translate(-50%,-50%); }
   .ft-chip { position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center;
-    background:none; border:none; cursor:pointer; padding:0; width:56px; color:var(--chalk); transition:transform .12s ease; }
+    background:none; border:none; cursor:pointer; padding:8px; width:64px; color:var(--chalk); transition:transform .12s ease;
+    touch-action:none; -webkit-tap-highlight-color:transparent; }
   .ft-chip:not(.ft-chip-empty) { cursor:grab; }
   .ft-chip:not(.ft-chip-empty):active { cursor:grabbing; }
   .ft-chip:not(.ft-chip-empty):hover { transform:translate(-50%,-50%) scale(1.08); }
@@ -1739,7 +1786,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-bench-row { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
   .ft-reserve { display:flex; flex-wrap:wrap; gap:8px; }
   .ft-res-pill { display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line);
-    border-radius:20px; padding:5px 10px 5px 6px; cursor:pointer; font-size:11px; transition:all .15s ease; }
+    border-radius:20px; padding:8px 12px 8px 8px; cursor:pointer; font-size:11px; transition:all .15s ease;
+    touch-action:none; -webkit-tap-highlight-color:transparent; }
   .ft-res-pill:hover { border-color:var(--gold); }
   .ft-res-pill.ft-chip-sel { outline:2px solid var(--chalk); }
   .ft-res-num { width:18px; height:18px; border-radius:50%; background:#0B2545; color:#fff; display:flex; align-items:center;
