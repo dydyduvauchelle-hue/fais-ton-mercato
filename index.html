@@ -37,7 +37,7 @@ const Icon = ({ children, size = 14 }) => (
 /* ------------------------------------------------------------------ */
 const CLUBS = [
   {
-    id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545", c3: "#D9B44A", c4: "#7FC4CE",
+    id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545", c3: "#D9B44A", c4: "#7FC4CE", c5: "#1B4FA0",
     apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55, valueCap: 230, dncg: true, startBudget: 10, startDncgSold: 54,
     matchNames: ["marseille"], leagueId: 61,
   },
@@ -429,21 +429,27 @@ function ClubCrest({ club, size = 40, logoUrl }) {
   );
 }
 function Jersey({ club, num, empty, home = true }) {
-  const accentA = club.c3 || club.c1;
-  const accentB = club.c2;
-  const body = home ? "#F5F3EC" : club.c2;
-  const cuffGradient = home ? `linear-gradient(180deg, ${accentA} 0 50%, ${accentB} 50% 100%)` : (club.c4 || lighten(club.c1));
-  const numColor = home ? club.c2 : "#F5F3EC";
+  const skyBlue = club.c1;
+  const gold = club.c3 || club.c1;
+  const navy = club.c2;
+  const skyLight = club.c4 || lighten(club.c1);
+  const body = home ? "#F5F3EC" : navy;
+  const cuffGradient = home
+    ? `linear-gradient(90deg, ${skyBlue} 0 33%, ${gold} 33% 66%, ${skyBlue} 66% 100%)`
+    : skyLight;
+  const numColor = home ? (club.c5 || navy) : "#F5F3EC";
   return (
     <span className={`ft-jersey ${empty ? "ft-jersey-empty" : ""}`} style={!empty ? { background: body } : {}}>
       {!empty && (<>
-        <span className="ft-jersey-sleeve ft-jersey-sleeve-l" style={{ background: body }}>
+        <span className={`ft-jersey-sleeve ft-jersey-sleeve-l ${!home ? "ft-jersey-textured" : ""}`}
+          style={{ background: body, "--tex": skyLight }}>
           <span className="ft-jersey-cuff" style={{ background: cuffGradient }} />
         </span>
-        <span className="ft-jersey-sleeve ft-jersey-sleeve-r" style={{ background: body }}>
+        <span className={`ft-jersey-sleeve ft-jersey-sleeve-r ${!home ? "ft-jersey-textured" : ""}`}
+          style={{ background: body, "--tex": skyLight }}>
           <span className="ft-jersey-cuff" style={{ background: cuffGradient }} />
         </span>
-        <span className="ft-jersey-collar" style={{ background: home ? accentA : (club.c4 || lighten(club.c1)) }} />
+        <span className="ft-jersey-collar" style={{ background: home ? skyBlue : skyLight }} />
       </>)}
       <span className="ft-jersey-num" style={empty ? {} : { color: numColor }}>{empty ? "+" : num}</span>
     </span>
@@ -1945,6 +1951,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-jersey-sleeve-l { left:0; clip-path:polygon(0 0,100% 0,60% 100%,0 65%); }
   .ft-jersey-sleeve-r { right:0; clip-path:polygon(0 0,100% 0,100% 65%,40% 100%); }
   .ft-jersey-cuff { position:absolute; bottom:0; left:0; width:100%; height:20%; }
+  .ft-jersey-textured { background-image: radial-gradient(var(--tex) 1px, transparent 1.4px) !important;
+    background-size: 5px 5px; background-position: 0 0, 2px 2px; }
   .ft-jersey-collar { position:absolute; top:0; left:38%; width:24%; height:16%; clip-path:polygon(0 0,100% 0,60% 100%,40% 100%); }
   .ft-jersey-num { position:relative; z-index:2; font-family:'Anton',sans-serif; font-size:12px; color:#0B2545; }
   .ft-jersey-empty { background:transparent; border:1.5px dashed rgba(244,247,241,0.4); }
