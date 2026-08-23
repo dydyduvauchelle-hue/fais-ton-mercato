@@ -67,9 +67,11 @@ with check (auth.uid() = user_id);
 -- Corrections de données réelles (valeur/salaire/contrat) saisies à la main pour
 -- coller à la réalité, joueur par joueur. Visible par tous, modifiable par tout
 -- utilisateur connecté (projet en petit comité pour l'instant).
-create table if not exists player_overrides (
-  player_id text primary key,
-  name text,
+drop table if exists player_overrides cascade;
+create table player_overrides (
+  id bigint generated always as identity primary key,
+  player_id text unique,
+  name text not null unique,
   value numeric,
   salary_monthly numeric,
   contract_end integer,

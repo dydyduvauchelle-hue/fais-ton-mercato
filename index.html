@@ -606,14 +606,18 @@ function FaisTonMercato() {
 
   const applyOverrides = async (players) => {
     const ids = players.map((p) => p.id.replace("live-", ""));
+    const names = players.map((p) => p.name);
     if (ids.length === 0) return;
     try {
-      const { data } = await sb.from("player_overrides").select("*").in("player_id", ids);
-      if (!data || data.length === 0) return;
-      const byId = {};
-      data.forEach((o) => { byId[o.player_id] = o; });
+      const [byIdRes, byNameRes] = await Promise.all([
+        sb.from("player_overrides").select("*").in("player_id", ids),
+        sb.from("player_overrides").select("*").in("name", names),
+      ]);
+      const byId = {}, byName = {};
+      (byIdRes.data || []).forEach((o) => { byId[o.player_id] = o; });
+      (byNameRes.data || []).forEach((o) => { byName[o.name.toLowerCase()] = o; });
       players.forEach((p) => {
-        const o = byId[p.id.replace("live-", "")];
+        const o = byId[p.id.replace("live-", "")] || byName[p.name.toLowerCase()];
         if (!o) return;
         if (o.value != null) p.value = Number(o.value);
         if (o.salary_monthly != null) p.salaryMonthly = Number(o.salary_monthly);
@@ -1014,7 +1018,7 @@ function FaisTonMercato() {
         await sb.from("player_overrides").upsert({
           player_id: p.id.replace("live-", ""), name: p.name, value, salary_monthly: salary, contract_end: contractEnd,
           updated_by: session.user.id, updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: "player_id" });
         setFlash(`${p.name} corrigé — visible pour tout le monde désormais.`);
       } catch (e) { setFlash("Échec de l'enregistrement de la correction."); }
     }
