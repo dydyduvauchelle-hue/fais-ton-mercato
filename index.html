@@ -290,16 +290,16 @@ const FORMATIONS = {
     { id: "STR", cat: "FWD", top: 14, left: 62 },
   ],
   "3-4-2-1": [
-    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DCL", cat: "DEF", top: 76, left: 25 },
-    { id: "DC", cat: "DEF", top: 80, left: 50 }, { id: "DCR", cat: "DEF", top: 76, left: 75 },
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DCL", cat: "DEF", top: 74, left: 25 },
+    { id: "DC", cat: "DEF", top: 72, left: 50 }, { id: "DCR", cat: "DEF", top: 74, left: 75 },
     { id: "ML", cat: "MID", top: 58, left: 10 }, { id: "MCL", cat: "MID", top: 60, left: 37 },
     { id: "MCR", cat: "MID", top: 60, left: 63 }, { id: "MR", cat: "MID", top: 58, left: 90 },
     { id: "AML", cat: "MID", top: 32, left: 32 }, { id: "AMR", cat: "MID", top: 32, left: 68 },
     { id: "ST", cat: "FWD", top: 13, left: 50 },
   ],
   "3-4-1-2": [
-    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DCL", cat: "DEF", top: 76, left: 25 },
-    { id: "DC", cat: "DEF", top: 80, left: 50 }, { id: "DCR", cat: "DEF", top: 76, left: 75 },
+    { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DCL", cat: "DEF", top: 74, left: 25 },
+    { id: "DC", cat: "DEF", top: 72, left: 50 }, { id: "DCR", cat: "DEF", top: 74, left: 75 },
     { id: "ML", cat: "MID", top: 58, left: 10 }, { id: "MCL", cat: "MID", top: 60, left: 37 },
     { id: "MCR", cat: "MID", top: 60, left: 63 }, { id: "MR", cat: "MID", top: 58, left: 90 },
     { id: "AM", cat: "MID", top: 34, left: 50 }, { id: "STL", cat: "FWD", top: 14, left: 38 },
@@ -363,16 +363,16 @@ const FORMATIONS = {
   ],
   "5-3-2": [
     { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 74, left: 10 },
-    { id: "DCL", cat: "DEF", top: 79, left: 30 }, { id: "DC", cat: "DEF", top: 81, left: 50 },
-    { id: "DCR", cat: "DEF", top: 79, left: 70 }, { id: "DR", cat: "DEF", top: 74, left: 90 },
+    { id: "DCL", cat: "DEF", top: 75, left: 30 }, { id: "DC", cat: "DEF", top: 73, left: 50 },
+    { id: "DCR", cat: "DEF", top: 75, left: 70 }, { id: "DR", cat: "DEF", top: 74, left: 90 },
     { id: "MCL", cat: "MID", top: 55, left: 25 }, { id: "MC", cat: "MID", top: 58, left: 50 },
     { id: "MCR", cat: "MID", top: 55, left: 75 }, { id: "STL", cat: "FWD", top: 14, left: 38 },
     { id: "STR", cat: "FWD", top: 14, left: 62 },
   ],
   "5-4-1": [
     { id: "GK", cat: "GK", top: 90, left: 50 }, { id: "DL", cat: "DEF", top: 74, left: 10 },
-    { id: "DCL", cat: "DEF", top: 79, left: 30 }, { id: "DC", cat: "DEF", top: 81, left: 50 },
-    { id: "DCR", cat: "DEF", top: 79, left: 70 }, { id: "DR", cat: "DEF", top: 74, left: 90 },
+    { id: "DCL", cat: "DEF", top: 75, left: 30 }, { id: "DC", cat: "DEF", top: 73, left: 50 },
+    { id: "DCR", cat: "DEF", top: 75, left: 70 }, { id: "DR", cat: "DEF", top: 74, left: 90 },
     { id: "ML", cat: "MID", top: 52, left: 12 }, { id: "MCL", cat: "MID", top: 55, left: 37 },
     { id: "MCR", cat: "MID", top: 55, left: 63 }, { id: "MR", cat: "MID", top: 52, left: 88 },
     { id: "ST", cat: "FWD", top: 12, left: 50 },
@@ -1013,7 +1013,8 @@ function FaisTonMercato() {
     const squadForBudget = [...filled.map((s) => s.player), ...bench];
     const hasValues = squadForBudget.some((p) => p.value != null && p.value > 0);
     const used = squadForBudget.reduce((s, p) => s + (p.value || 0), 0);
-    const wageBill = Math.round(squadForBudget.reduce((s, p) => s + (estimateWage(p.value) || 0), 0) * 10) / 10;
+    const fullSquad = squad.filter((p) => !p.onLoan);
+    const wageBill = Math.round(fullSquad.reduce((s, p) => s + (estimateWage(p.value) || 0), 0) * 10) / 10;
     const cap = club.valueCap;
     const ratio = used / cap;
     const budgetScore = ratio <= 1 ? 10 + 15 * ratio : Math.max(0, 25 - (ratio - 1) * 100);
@@ -1027,7 +1028,7 @@ function FaisTonMercato() {
     const quality = Math.min(25, (avgValue / (cap / 5)) * 25);
     return { coverage, budgetScore, coherence, quality, hasValues, wageBill,
       total: coverage + coherence + (hasValues ? budgetScore + quality : 0), partial: !hasValues, used, avgAge: withAge.length ? avgAge : null };
-  }, [starters, bench, slots.length, club]);
+  }, [starters, bench, slots.length, club, squad]);
 
   const realism = useMemo(() => {
     if (!club) return { verifiedScore: 0, sizeScore: 0, spendScore: 0, diversityScore: 0, rivalPenalty: 0, rivalSignings: [], total: 0, verifiedPct: 0, squadSize: 0 };
@@ -1056,29 +1057,6 @@ function FaisTonMercato() {
     return { verifiedScore, sizeScore, spendScore, diversityScore, rivalPenalty, rivalSignings,
       total: Math.max(0, rawTotal), verifiedPct, squadSize: all.length };
   }, [squad, club]);
-
-  const advice = useMemo(() => {
-    if (!club) return [];
-    const tips = [];
-    const activeSquad = squad.filter((p) => !p.onLoan);
-    const gkCount = activeSquad.filter((p) => p.cat === "GK").length;
-    const defCount = activeSquad.filter((p) => p.cat === "DEF").length;
-    const midCount = activeSquad.filter((p) => p.cat === "MID").length;
-    const fwdCount = activeSquad.filter((p) => p.cat === "FWD").length;
-    if (gkCount < 2) tips.push("💡 Un seul gardien dans l'effectif — pas de vraie doublure en cas de blessure ou suspension.");
-    if (defCount < 5) tips.push("💡 Peu de défenseurs — la rotation risque d'être compliquée sur une saison complète.");
-    if (fwdCount >= defCount * 2) tips.push("💡 Beaucoup plus d'attaquants que de défenseurs — l'équilibre défensif pourrait en pâtir.");
-    if (midCount < 4) tips.push("💡 Milieu de terrain un peu court en effectif.");
-    const cats = ["GK", "DEF", "MID", "FWD"];
-    const benchList = bench;
-    cats.forEach((c) => {
-      if (!benchList.some((p) => p.cat === c) && activeSquad.some((p) => p.cat === c)) {
-        tips.push(`💡 Aucune doublure au poste ${CAT_LABEL[c].toLowerCase()} sur le banc.`);
-      }
-    });
-    if (score.hasValues && score.used > club.valueCap) tips.push("💡 La valeur de l'effectif dépasse le plafond indicatif du club.");
-    return tips.slice(0, 4);
-  }, [squad, club, bench, score]);
 
   const buyPlayer = (p) => {
     if (transferBudget < p.value) return;
@@ -1607,9 +1585,10 @@ function FaisTonMercato() {
           </div>
           <div className="ft-budget">
             <Icon>🧾</Icon>
-            {club.noWageCap ? (
-              <div className="ft-budget-label">Masse salariale estimée : {score.wageBill}M€/an — pas de plafond ni d'encadrement DNCG pour ce club</div>
-            ) : (<>
+            {club.noWageCap ? (<>
+              <div className="ft-budget-track"><div className="ft-budget-fill" style={{ width: `${Math.min(100, (score.wageBill / club.salaryCap) * 100)}%` }} /></div>
+              <div className="ft-budget-label">{score.wageBill}M€/an</div>
+            </>) : (<>
               <div className="ft-budget-track"><div className={`ft-budget-fill ${score.wageBill > club.salaryCap ? "ft-over" : ""}`} style={{ width: `${Math.min(100, (score.wageBill / club.salaryCap) * 100)}%` }} /></div>
               <div className="ft-budget-label">{score.wageBill}M€/an · plafond {club.salaryCap}M€ (estimé) · encadrement de la masse salariale et des indemnités</div>
             </>)}
@@ -1643,12 +1622,6 @@ function FaisTonMercato() {
               </div>
             ))}
           </div>
-
-          {advice.length > 0 && !mercatoRevealed && (
-            <div className="ft-advice">
-              {advice.map((a, i) => <div key={i} className="ft-advice-item">{a}</div>)}
-            </div>
-          )}
 
           {!mercatoRevealed ? (
             <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "12px 0", marginTop: 16, fontSize: 12 }} onClick={() => setMercatoRevealed(true)}>
@@ -1810,7 +1783,7 @@ function FaisTonMercato() {
                   {p.saleTag && <span className="ft-tag-sale">en instance de départ</span>}
                   {p.loanedIn && <span className="ft-tag-loan">prêté au club</span>}
                   {!p.verified && <span className="ft-tag-fictif">fictif</span>}
-                  {p.overridden && <span className="ft-tag-loan">✓ corrigé</span>}
+                  {p.overridden && isAdmin && <span className="ft-tag-loan">✓ corrigé</span>}
                   {isRivalOrigin(club.name, p.fromClub) && <span className="ft-tag-sale">rival historique</span>}
                 </div>
                 <div className="ft-row-sub">{posLine(p)} · {p.age ? `${p.age} ans` : "âge n.c."} · {fmtValue(p.value)} · {monthlySalaryK(p) != null ? `${monthlySalaryK(p)}K€/mois` : "salaire n.c."} · contrat jusqu'en {p.contractEnd}</div>
@@ -2171,9 +2144,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-trophy { display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--gold); border-radius:20px;
     padding:6px 12px 6px 8px; font-size:10.5px; font-weight:600; cursor:help; }
   .ft-trophy-icon { font-size:14px; }
-  .ft-advice { display:flex; flex-direction:column; gap:6px; margin-top:14px; }
-  .ft-advice-item { font-size:10.5px; color:var(--muted); background:var(--panel); border:1px solid var(--line);
-    border-radius:8px; padding:7px 10px; line-height:1.4; }
 
   .ft-tag-fictif { font-family:'IBM Plex Mono',monospace; font-size:8px; background:rgba(244,247,241,0.12); color:var(--muted);
     border-radius:5px; padding:1px 5px; margin-left:5px; }
