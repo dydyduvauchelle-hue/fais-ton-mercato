@@ -38,7 +38,7 @@ const Icon = ({ children, size = 14 }) => (
 const CLUBS = [
   {
     id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545",
-    apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55, valueCap: 230, dncg: true, startBudget: 10,
+    apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55, valueCap: 230, dncg: true, startBudget: 10, startDncgSold: 54,
     matchNames: ["marseille"], leagueId: 61,
   },
   {
@@ -428,17 +428,31 @@ function ClubCrest({ club, size = 40, logoUrl }) {
       background: `linear-gradient(165deg, ${club.c1} 0%, ${club.c1} 52%, ${club.c2} 52%, ${club.c2} 100%)`, fontSize: size * 0.24 }}>{club.code}</div>
   );
 }
-function Jersey({ club, num, empty }) {
+function Jersey({ club, num, empty, home = true }) {
+  const body = home ? "#F7F8F6" : club.c2;
+  const trim = home ? club.c1 : club.c2light || lighten(club.c1);
+  const numColor = home ? club.c2 : "#F7F8F6";
   return (
-    <span className={`ft-jersey ${empty ? "ft-jersey-empty" : ""}`}>
+    <span className={`ft-jersey ${empty ? "ft-jersey-empty" : ""}`} style={!empty ? { background: body } : {}}>
       {!empty && (<>
-        <span className="ft-jersey-sleeve ft-jersey-sleeve-l" style={{ background: club.c1 }} />
-        <span className="ft-jersey-sleeve ft-jersey-sleeve-r" style={{ background: club.c1 }} />
-        <span className="ft-jersey-collar" style={{ background: club.c1 }} />
+        <span className="ft-jersey-sleeve ft-jersey-sleeve-l" style={{ background: trim }}>
+          <span className="ft-jersey-stripe" style={{ background: club.c2 === trim ? club.c1 : club.c2 }} />
+        </span>
+        <span className="ft-jersey-sleeve ft-jersey-sleeve-r" style={{ background: trim }}>
+          <span className="ft-jersey-stripe" style={{ background: club.c2 === trim ? club.c1 : club.c2 }} />
+        </span>
+        <span className="ft-jersey-collar" style={{ background: trim }} />
       </>)}
-      <span className="ft-jersey-num" style={empty ? {} : { color: club.c2 }}>{empty ? "+" : num}</span>
+      <span className="ft-jersey-num" style={empty ? {} : { color: numColor }}>{empty ? "+" : num}</span>
     </span>
   );
+}
+function lighten(hex) {
+  try {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, ((n >> 16) & 255) + 60), g = Math.min(255, ((n >> 8) & 255) + 60), b = Math.min(255, (n & 255) + 60);
+    return `rgb(${r},${g},${b})`;
+  } catch (e) { return hex; }
 }
 function Skeleton({ count = 6 }) {
   return (
@@ -460,6 +474,7 @@ function makeTable(club) {
 /* ==================================================================== */
 function FaisTonMercato() {
   const [activeKey, setActiveKey] = useState(null);
+  const [kitHome, setKitHome] = useState(true);
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem("ftm-theme") || "dark"; } catch (e) { return "dark"; } });
   useEffect(() => { try { localStorage.setItem("ftm-theme", theme); } catch (e) {} document.body.style.background = theme === "light" ? "#EAEDEA" : "#05080a"; }, [theme]);
   const [dynamicClubs, setDynamicClubs] = useState({});
@@ -640,7 +655,7 @@ function FaisTonMercato() {
     setDataSource("loading");
     setSquad([]);
     setTransferBudget(c.startBudget ?? START_TRANSFER_BUDGET);
-    setDncgSold(0);
+    setDncgSold(c.startDncgSold || 0);
     setMarketPool([]);
     setFixtures(makeFixtures(c));
     setTable(makeTable(c));
@@ -682,7 +697,7 @@ function FaisTonMercato() {
       setDataSource("saved");
     }
     freshLoadRef.current = true;
-  }, [activeKey, authReady, session]);
+  }, [activeKey, authReady, session?.user?.id]);
 
   const saveGame = async () => {
     if (!activeKey) return;
@@ -786,7 +801,7 @@ function FaisTonMercato() {
   useEffect(() => {
     if (!session) return;
     DIVISIONS.filter((d) => d.open).forEach((d) => { if (!divisionCache[d.id]) fetchDivision(d); });
-  }, [session]);
+  }, [session?.user?.id]);
 
   const openDivision = async (div) => {
     setBrowseDivision(div); setHomeStage("clubs"); setBrowseLoading(true); setBrowseError(""); setClubsList([]);
@@ -1121,7 +1136,7 @@ function FaisTonMercato() {
         onTouchStart={player ? onChipTouchStart(player.id) : undefined}
         onTouchMove={player ? onChipTouchMove : undefined}
         onTouchEnd={player ? onChipTouchEnd : undefined}>
-        <Jersey club={club} num={player?.num} empty={isEmpty} />
+        <Jersey club={club} num={player?.num} empty={isEmpty} home={kitHome} />
         <span className="ft-chip-name">{player ? shortName(player.name) : CAT_LABEL[slot.cat]}</span>
         {player && <span className="ft-chip-tag">{getSubPos(player) || player.cat}{size !== "sm" && ` · ${fmtValue(player.value)}`}</span>}
       </button>
@@ -1484,6 +1499,7 @@ function FaisTonMercato() {
             <button className="ft-back-btn" onClick={() => setView("home")}>←</button>
             <ClubCrest club={club} size={44} logoUrl={logosCache[activeKey]?.logo} />
             <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach || logosCache[activeKey]?.coach || "inconnu"}</div></div>
+            <button className="ft-back-btn" onClick={() => setKitHome((k) => !k)} title="Changer de maillot">{kitHome ? "🏠 Domicile" : "✈️ Extérieur"}</button>
             <select className="ft-formation-select" value={formation} onChange={(e) => setFormation(e.target.value)}>
               {Object.keys(FORMATIONS).map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
@@ -1491,7 +1507,7 @@ function FaisTonMercato() {
           <div className="ft-budget">
             <Icon>🧾</Icon>
             <div className="ft-budget-track"><div className={`ft-budget-fill ${score.wageBill > club.salaryCap ? "ft-over" : ""}`} style={{ width: `${Math.min(100, (score.wageBill / club.salaryCap) * 100)}%` }} /></div>
-            <div className="ft-budget-label">{score.wageBill}M€/an · plafond {club.salaryCap}M€ (estimé)</div>
+            <div className="ft-budget-label">{score.wageBill}M€/an · plafond {club.salaryCap}M€ (estimé) · encadrement de la masse salariale et des indemnités</div>
           </div>
 
           <div className="ft-squad-grid">
@@ -1920,12 +1936,13 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-bench-row .ft-chip { position:static; transform:none; flex-shrink:0; }
   .ft-bench-row .ft-chip:not(.ft-chip-empty):hover { transform:scale(1.08); }
   .ft-jersey { position:relative; width:32px; height:32px; margin:0 auto; display:flex; align-items:center; justify-content:center;
-    background:#fff; overflow:hidden;
+    overflow:hidden;
     clip-path:polygon(22% 0%,38% 0%,50% 14%,62% 0%,78% 0%,100% 22%,84% 36%,84% 100%,16% 100%,16% 36%,0% 22%);
     box-shadow:0 2px 6px rgba(0,0,0,0.35); }
   .ft-jersey-sleeve { position:absolute; top:0; width:38%; height:44%; }
   .ft-jersey-sleeve-l { left:0; clip-path:polygon(0 0,100% 0,60% 100%,0 65%); }
   .ft-jersey-sleeve-r { right:0; clip-path:polygon(0 0,100% 0,100% 65%,40% 100%); }
+  .ft-jersey-stripe { position:absolute; bottom:0; left:0; width:100%; height:22%; }
   .ft-jersey-collar { position:absolute; top:0; left:38%; width:24%; height:16%; clip-path:polygon(0 0,100% 0,60% 100%,40% 100%); }
   .ft-jersey-num { position:relative; z-index:2; font-family:'Anton',sans-serif; font-size:12px; color:#0B2545; }
   .ft-jersey-empty { background:transparent; border:1.5px dashed rgba(244,247,241,0.4); }
