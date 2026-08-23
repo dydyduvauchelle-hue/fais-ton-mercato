@@ -759,13 +759,13 @@ function FaisTonMercato() {
 
   const fetchDivision = async (div) => {
     if (divisionCache[div.id]) return divisionCache[div.id];
-    const curatedFallback = () => CLUBS.filter((c) => c.leagueId === div.id).map((c) => ({ id: c.id, name: c.name, logo: null }));
+    const curatedFallback = () => CLUBS.filter((c) => c.leagueId === div.id).map((c) => ({ id: c.id, name: c.name, logo: null })).sort((a, b) => a.name.localeCompare(b.name, "fr"));
     let entry;
     try {
       const r = await fetch(`/api/teams-by-league?league=${encodeURIComponent(div.name)}`);
       const data = await r.json();
       if (data.error || !data.teams || data.teams.length === 0) throw new Error(data.error || "indisponible");
-      entry = { teams: data.teams, logo: data.league?.logo || null, error: null };
+      entry = { teams: [...data.teams].sort((a, b) => a.name.localeCompare(b.name, "fr")), logo: data.league?.logo || null, error: null };
     } catch (err) {
       const fb = curatedFallback();
       entry = { teams: fb, logo: null, error: fb.length > 0
