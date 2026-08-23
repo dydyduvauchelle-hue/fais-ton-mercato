@@ -25,6 +25,7 @@ const { useState, useEffect, useMemo } = React;
 const SUPABASE_URL = "https://avjlewtkrlvvtmtnioqi.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2amxld3Rrcmx2dnRtdG5pb3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NTEzMjcsImV4cCI6MjEwMjUyNzMyN30.6phgvPTJLtv3UEBz7XtiZXyPTKA-S6hYcLx9jz1eSAw";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const ADMIN_EMAIL = "dydy.duvauchelle@hotmail.fr";
 
 const Icon = ({ children, size = 14 }) => (
   <span style={{ fontSize: size, lineHeight: 1, display: "inline-flex" }}>{children}</span>
@@ -486,6 +487,7 @@ function FaisTonMercato() {
   const [liveError, setLiveError] = useState("");
 
   const [session, setSession] = useState(null);
+  const isAdmin = session?.user?.email === ADMIN_EMAIL;
   const [authReady, setAuthReady] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState("signin");
@@ -1174,7 +1176,9 @@ function FaisTonMercato() {
   const loadMyFeedback = async () => {
     if (!session) return;
     try {
-      const { data } = await sb.from("feedback").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(10);
+      let query = sb.from("feedback").select("*").order("created_at", { ascending: false }).limit(isAdmin ? 50 : 10);
+      if (!isAdmin) query = query.eq("user_id", session.user.id);
+      const { data } = await query;
       setMyFeedback(data || []);
     } catch (e) {}
   };
@@ -1382,9 +1386,9 @@ function FaisTonMercato() {
             <textarea className="ft-feedback-textarea" placeholder="Décris ton idée ou le bug rencontré…" value={feedbackMsg} onChange={(e) => setFeedbackMsg(e.target.value)} />
             <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "9px 0", marginTop: 8 }} disabled={feedbackBusy || !feedbackMsg.trim()} onClick={submitFeedback}>Envoyer</button>
             {myFeedback.length > 0 && (<>
-              <div className="ft-section-label" style={{ marginTop: 16 }}><span>Mes envois précédents</span></div>
+              <div className="ft-section-label" style={{ marginTop: 16 }}><span>{isAdmin ? "Tous les retours reçus" : "Mes envois précédents"}</span></div>
               {myFeedback.map((f) => (
-                <div key={f.id} className="ft-row-sub" style={{ marginBottom: 6 }}>{f.type === "bug" ? "🐛" : "💡"} {f.message}</div>
+                <div key={f.id} className="ft-row-sub" style={{ marginBottom: 6 }}>{f.type === "bug" ? "🐛" : "💡"} {f.message}{isAdmin && f.author_name ? ` — ${f.author_name}` : ""}</div>
               ))}
             </>)}
             <div className="ft-modal-close" onClick={() => setShowFeedback(false)}>✕</div>
@@ -1690,7 +1694,7 @@ function FaisTonMercato() {
                 <button className="ft-mini-btn" onClick={() => loanOutPlayer(p, false)}>Prêter</button>
                 <button className="ft-mini-btn" onClick={() => loanOutPlayer(p, true)}>Prêter +OA</button>
                 <button className="ft-mini-btn ft-sell" onClick={() => sellPlayer(p)}>Vendre{p.value != null ? ` · ${Math.round(p.value * 0.9 * 10) / 10}M€` : ""}</button>
-                {p.verified && <button className="ft-mini-btn" onClick={() => startEditPlayer(p)}>✏️ corriger</button>}
+                {p.verified && isAdmin && <button className="ft-mini-btn" onClick={() => startEditPlayer(p)}>✏️ corriger</button>}
               </div>
               {editingPlayer === p.id && (
                 <div className="ft-edit-form">

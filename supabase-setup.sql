@@ -83,9 +83,10 @@ drop policy if exists "Tout le monde peut lire les corrections" on player_overri
 create policy "Tout le monde peut lire les corrections"
 on player_overrides for select using (true);
 drop policy if exists "Les connectés peuvent corriger" on player_overrides;
-create policy "Les connectés peuvent corriger"
+create policy "Seul l'admin peut corriger"
 on player_overrides for all
-using (auth.uid() is not null) with check (auth.uid() is not null);
+using (auth.jwt() ->> 'email' = 'dydy.duvauchelle@hotmail.fr')
+with check (auth.jwt() ->> 'email' = 'dydy.duvauchelle@hotmail.fr');
 
 -- Retours utilisateurs : idées et rapports de bug.
 create table if not exists feedback (
@@ -103,3 +104,7 @@ on feedback for select using (auth.uid() = user_id);
 drop policy if exists "Chacun ajoute uniquement ses retours" on feedback;
 create policy "Chacun ajoute uniquement ses retours"
 on feedback for insert with check (auth.uid() = user_id);
+drop policy if exists "L'admin voit tous les retours" on feedback;
+create policy "L'admin voit tous les retours"
+on feedback for select
+using (auth.jwt() ->> 'email' = 'dydy.duvauchelle@hotmail.fr');
