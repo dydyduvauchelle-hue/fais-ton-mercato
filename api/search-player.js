@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
   if (q.length < 3) { res.status(400).json({ error: "Recherche trop courte (3 caractères minimum)." }); return; }
 
   try {
-    const r = await fetch(`${BASE}/players/search/${encodeURIComponent(q)}?api_token=${TOKEN}&include=position;detailedPosition;teams.team`);
+    const r = await fetch(`${BASE}/players/search/${encodeURIComponent(q)}?api_token=${TOKEN}&include=position;detailedPosition;teams.team;nationality`);
     const data = await r.json();
     if (!r.ok) throw new Error(data.message || `Erreur Sportmonks (${r.status}).`);
 
@@ -67,6 +67,7 @@ module.exports = async (req, res) => {
         subPos: subPosCode(p.detailedPosition?.name || p.position?.name),
         number,
         team: currentTeam?.team?.name || null,
+        flagCode: (p.nationality?.iso2 || "").toLowerCase() || null,
       };
     }));
 

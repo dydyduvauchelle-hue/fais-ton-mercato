@@ -208,7 +208,7 @@ const START_TRANSFER_BUDGET = 10;
 const DNCG_TARGET = 80;
 
 const DIVISIONS = [
-  { id: 61, country: "France", name: "Ligue 1", code: "L1", c1: "#0B2545", c2: "#2AABE2", tier: 1 },
+  { id: 61, country: "France", name: "Ligue 1", code: "L1", c1: "#0B2545", c2: "#2AABE2", tier: 1, open: true },
   { id: 62, country: "France", name: "Ligue 2", code: "L2", c1: "#0B2545", c2: "#F4F7F1", tier: 4 },
   { id: 63, country: "France", name: "Ligue 3", code: "L3", c1: "#0B2545", c2: "#C8102E", tier: 5 },
   { id: 39, country: "England", name: "Premier League", code: "PL", c1: "#38003C", c2: "#00FF87", tier: 1 },
@@ -408,6 +408,11 @@ function estimateWage(value) {
   if (value == null) return null;
   return Math.max(0.3, Math.round(value * 0.18 * 10) / 10);
 }
+function monthlySalaryK(p) {
+  if (p.salaryMonthly != null) return Math.round(p.salaryMonthly);
+  const annual = estimateWage(p.value);
+  return annual == null ? null : Math.round((annual * 1000) / 12);
+}
 
 function ClubCrest({ club, size = 40, logoUrl }) {
   if (logoUrl) return <img src={logoUrl} alt={club.code} width={size} height={size} style={{ objectFit: "contain", flexShrink: 0 }} />;
@@ -598,6 +603,25 @@ function FaisTonMercato() {
 
   const freshLoadRef = React.useRef(true);
 
+  const applyOverrides = async (players) => {
+    const ids = players.map((p) => p.id.replace("live-", ""));
+    if (ids.length === 0) return;
+    try {
+      const { data } = await sb.from("player_overrides").select("*").in("player_id", ids);
+      if (!data || data.length === 0) return;
+      const byId = {};
+      data.forEach((o) => { byId[o.player_id] = o; });
+      players.forEach((p) => {
+        const o = byId[p.id.replace("live-", "")];
+        if (!o) return;
+        if (o.value != null) p.value = Number(o.value);
+        if (o.salary_monthly != null) p.salaryMonthly = Number(o.salary_monthly);
+        if (o.contract_end != null) p.contractEnd = Number(o.contract_end);
+        p.overridden = true;
+      });
+    } catch (e) {}
+  };
+
   const loadFreshClub = async (clubId) => {
     const c = CLUBS.find((x) => x.id === clubId) || dynamicClubs[clubId];
     if (!c) return;
@@ -628,6 +652,7 @@ function FaisTonMercato() {
           contractEnd: contractFor(p.age || 25), verified: true,
           onLoan: false, loanOA: false, loanedIn: false };
       });
+      await applyOverrides(mapped);
       setSquad(mapped);
       setDataSource("live");
     } catch (err) {
@@ -717,6 +742,7 @@ function FaisTonMercato() {
           contractEnd: contractFor(p.age || 25), verified: true,
           onLoan: false, loanOA: false, loanedIn: false };
       });
+      await applyOverrides(mapped);
       setSquad(mapped);
       setDataSource("live");
       setFlash("Effectif actualisé.");
@@ -747,7 +773,7 @@ function FaisTonMercato() {
 
   useEffect(() => {
     if (!session) return;
-    DIVISIONS.forEach((d) => { if (!divisionCache[d.id]) fetchDivision(d); });
+    DIVISIONS.filter((d) => d.open).forEach((d) => { if (!divisionCache[d.id]) fetchDivision(d); });
   }, [session]);
 
   const openDivision = async (div) => {
@@ -971,6 +997,29 @@ function FaisTonMercato() {
     setFlash(`${p.name} a prolongé (${fee}M€ de prime).`);
   };
 
+  const [editingPlayer, setEditingPlayer] = useState(null);
+  const [editForm, setEditForm] = useState({ value: "", salary: "", contractEnd: "" });
+  const startEditPlayer = (p) => {
+    setEditingPlayer(p.id);
+    setEditForm({ value: p.value ?? "", salary: monthlySalaryK(p) ?? "", contractEnd: p.contractEnd ?? "" });
+  };
+  const saveEditPlayer = async (p) => {
+    const value = editForm.value === "" ? null : Number(editForm.value);
+    const salary = editForm.salary === "" ? null : Number(editForm.salary);
+    const contractEnd = editForm.contractEnd === "" ? null : Number(editForm.contractEnd);
+    setSquad((s) => s.map((x) => (x.id === p.id ? { ...x, value: value ?? x.value, salaryMonthly: salary, contractEnd: contractEnd ?? x.contractEnd, overridden: true } : x)));
+    if (session) {
+      try {
+        await sb.from("player_overrides").upsert({
+          player_id: p.id.replace("live-", ""), name: p.name, value, salary_monthly: salary, contract_end: contractEnd,
+          updated_by: session.user.id, updated_at: new Date().toISOString(),
+        });
+        setFlash(`${p.name} corrigé — visible pour tout le monde désormais.`);
+      } catch (e) { setFlash("Échec de l'enregistrement de la correction."); }
+    }
+    setEditingPlayer(null);
+  };
+
   const simulateSeason = () => {
     if (!fixtures) return;
     let newTable = table.map((r) => ({ ...r }));
@@ -1111,6 +1160,32 @@ function FaisTonMercato() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackType, setFeedbackType] = useState("idea");
+  const [feedbackMsg, setFeedbackMsg] = useState("");
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [myFeedback, setMyFeedback] = useState([]);
+  const loadMyFeedback = async () => {
+    if (!session) return;
+    try {
+      const { data } = await sb.from("feedback").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(10);
+      setMyFeedback(data || []);
+    } catch (e) {}
+  };
+  const submitFeedback = async () => {
+    if (!feedbackMsg.trim() || !session) return;
+    setFeedbackBusy(true);
+    try {
+      await sb.from("feedback").insert({
+        user_id: session.user.id, author_name: session.user.user_metadata?.full_name || session.user.email,
+        type: feedbackType, message: feedbackMsg.trim(),
+      });
+      setFeedbackMsg("");
+      loadMyFeedback();
+      setFlash("Merci, c'est envoyé !");
+    } catch (e) { setFlash("Échec de l'envoi."); } finally { setFeedbackBusy(false); }
+  };
   const [clubSearch, setClubSearch] = useState("");
   const [clubSearchResults, setClubSearchResults] = useState([]);
   const [clubSearching, setClubSearching] = useState(false);
@@ -1212,6 +1287,7 @@ function FaisTonMercato() {
         <button className={`ft-nav-btn ${view === "home" ? "ft-active" : ""}`} onClick={() => setView("home")}><Icon>🏠</Icon> Accueil</button>
         <button className={`ft-nav-btn ${view === "squad" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("squad")}><Icon>👕</Icon> Compositeur</button>
         <button className={`ft-nav-btn ${view === "market" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("market")}><Icon>🔁</Icon> Marché</button>
+        <button className="ft-account-btn" onClick={() => setShowHelp(true)} title="Aide"><Icon>❓</Icon></button>
         <button className="ft-account-btn" onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} title="Changer de thème"><Icon>{theme === "light" ? "🌙" : "☀️"}</Icon></button>
         <button className="ft-account-btn" onClick={() => { setShowAuth(true); loadMySaves(); }}><Icon>👤</Icon></button>
       </nav>
@@ -1275,6 +1351,43 @@ function FaisTonMercato() {
         </div>
       )}
 
+      {showHelp && (
+        <div className="ft-modal-backdrop" onClick={() => setShowHelp(false)}>
+          <div className="ft-modal ft-modal-wide" onClick={(e) => e.stopPropagation()}>
+            <div className="ft-modal-title">Comment ça marche</div>
+            <div className="ft-help-text">
+              <p><b>Le principe :</b> choisis un club réel, construis ton onze, achète/vends/prête des joueurs, puis clique "Terminer mon mercato" pour voir ton bilan noté.</p>
+              <p><b>Valeurs et salaires :</b> sauf mention "corrigé", ce sont des estimations (âge, poste, niveau de la division) — pas des cotes officielles. La Ligue 1 est en cours de vérification joueur par joueur.</p>
+              <p><b>Score mercato :</b> couverture des postes, discipline budgétaire, cohérence d'effectif, valeur du recrutement.</p>
+              <p><b>Score de réalisme :</b> part de joueurs réels vérifiés, taille d'effectif plausible, pas de transfert délirant, répartition des postes crédible.</p>
+              <p><b>Se déplacer :</b> clique un titulaire puis un autre joueur pour les échanger, ou glisse-dépose directement (souris ou tactile).</p>
+            </div>
+            <div className="ft-modal-close" onClick={() => setShowHelp(false)}>✕</div>
+          </div>
+        </div>
+      )}
+
+      {showFeedback && (
+        <div className="ft-modal-backdrop" onClick={() => setShowFeedback(false)}>
+          <div className="ft-modal ft-modal-wide" onClick={(e) => e.stopPropagation()}>
+            <div className="ft-modal-title">Idée ou bug ?</div>
+            <div className="ft-account-tabs">
+              <button className={`ft-account-tab ${feedbackType === "idea" ? "ft-active" : ""}`} onClick={() => setFeedbackType("idea")}>💡 Idée</button>
+              <button className={`ft-account-tab ${feedbackType === "bug" ? "ft-active" : ""}`} onClick={() => setFeedbackType("bug")}>🐛 Bug</button>
+            </div>
+            <textarea className="ft-feedback-textarea" placeholder="Décris ton idée ou le bug rencontré…" value={feedbackMsg} onChange={(e) => setFeedbackMsg(e.target.value)} />
+            <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "9px 0", marginTop: 8 }} disabled={feedbackBusy || !feedbackMsg.trim()} onClick={submitFeedback}>Envoyer</button>
+            {myFeedback.length > 0 && (<>
+              <div className="ft-section-label" style={{ marginTop: 16 }}><span>Mes envois précédents</span></div>
+              {myFeedback.map((f) => (
+                <div key={f.id} className="ft-row-sub" style={{ marginBottom: 6 }}>{f.type === "bug" ? "🐛" : "💡"} {f.message}</div>
+              ))}
+            </>)}
+            <div className="ft-modal-close" onClick={() => setShowFeedback(false)}>✕</div>
+          </div>
+        </div>
+      )}
+
       <div className="ft-body ft-fade-in" key={view + homeStage}>
         {dataSource === "demo" && <div className="ft-status demo"><Icon>🚫</Icon> Connexion impossible pour le moment — effectif d'exemple affiché. <span className="ft-reset-link" onClick={refreshLive}>réessayer</span></div>}
 
@@ -1319,11 +1432,12 @@ function FaisTonMercato() {
             <div className="ft-section-label"><span>{COUNTRY_META[browseCountry]?.label}</span></div>
             <div className="ft-grid">
               {DIVISIONS.filter((d) => d.country === browseCountry).map((d) => (
-                <button key={d.id} className="ft-club-card" onClick={() => openDivision(d)}>
+                <button key={d.id} className={`ft-club-card ${!d.open ? "ft-club-card-soon" : ""}`} onClick={() => d.open && openDivision(d)}>
                   {divisionCache[d.id]?.logo
                     ? <img src={divisionCache[d.id].logo} width={40} height={40} alt="" style={{ objectFit: "contain" }} />
                     : <div className="ft-crest" style={{ width: 40, height: 45, background: `linear-gradient(165deg, ${d.c1} 0%, ${d.c1} 55%, ${d.c2} 55%, ${d.c2} 100%)`, fontSize: 10 }}>{d.code}</div>}
                   <span className="ft-club-name">{d.name}</span>
+                  {!d.open && <span className="ft-soon">bientôt</span>}
                 </button>
               ))}
             </div>
@@ -1345,6 +1459,12 @@ function FaisTonMercato() {
               </div>
             )}
           </>)}
+
+          <div className="ft-site-footer">
+            <span onClick={() => setShowHelp(true)}>Aide</span>
+            <span onClick={() => { setShowFeedback(true); loadMyFeedback(); }}>Contact · Idées & bugs</span>
+            <span className="ft-site-footer-muted">Données : Sportmonks · Comptes : Supabase · Hébergement : Vercel</span>
+          </div>
         </>)}
 
         {view === "squad" && club && (<>
@@ -1521,7 +1641,7 @@ function FaisTonMercato() {
                 {searchResults.map((r) => (
                   <div key={r.id} className="ft-search-result" onClick={() => pickSearchResult(r)}>
                     {r.photo ? <img className="ft-row-photo" src={r.photo} alt="" /> : <div className="ft-row-num">{POS_MAP[r.position] || r.position || "?"}</div>}
-                    <div><div className="ft-row-name">{r.name}</div><div className="ft-row-sub">{r.team || "club inconnu"} · {CAT_LABEL[POS_MAP[r.position] || r.position] || r.position || "poste inconnu"}{r.subPos ? ` · ${r.subPos}` : ""} · {r.age ? `${r.age} ans` : ""}</div></div>
+                    <div><div className="ft-row-name">{r.flagCode && <img src={`https://flagcdn.com/w20/${r.flagCode}.png`} alt="" style={{ width: 14, marginRight: 5, verticalAlign: "middle" }} />}{r.name}</div><div className="ft-row-sub">{r.team || "club inconnu"} · {CAT_LABEL[POS_MAP[r.position] || r.position] || r.position || "poste inconnu"}{r.subPos ? ` · ${r.subPos}` : ""} · {r.age ? `${r.age} ans` : ""}</div></div>
                   </div>
                 ))}
               </div>
@@ -1548,7 +1668,7 @@ function FaisTonMercato() {
           <div className="ft-market-right">
           <div className="ft-section-label"><span>Votre effectif</span></div>
           {squad.filter((p) => !p.onLoan).map((p) => (
-            <div key={p.id} className="ft-row">
+            <div key={p.id} className="ft-row" style={{ flexWrap: "wrap" }}>
               {p.photo && <img className="ft-row-photo" src={p.photo} alt="" />}
               <input className="ft-num-input" type="number" value={p.num} min={1} max={99} onChange={(e) => updateNumber(p.id, e.target.value)} />
               <div>
@@ -1557,16 +1677,27 @@ function FaisTonMercato() {
                   {p.saleTag && <span className="ft-tag-sale">en instance de départ</span>}
                   {p.loanedIn && <span className="ft-tag-loan">prêté au club</span>}
                   {!p.verified && <span className="ft-tag-fictif">fictif</span>}
+                  {p.overridden && <span className="ft-tag-loan">✓ corrigé</span>}
                   {isRivalOrigin(club.name, p.fromClub) && <span className="ft-tag-sale">rival historique</span>}
                 </div>
-                <div className="ft-row-sub">{posLine(p)} · {p.age ? `${p.age} ans` : "âge n.c."} · {fmtValue(p.value)} · contrat jusqu'en {p.contractEnd}</div>
+                <div className="ft-row-sub">{posLine(p)} · {p.age ? `${p.age} ans` : "âge n.c."} · {fmtValue(p.value)} · {monthlySalaryK(p) != null ? `${monthlySalaryK(p)}K€/mois` : "salaire n.c."} · contrat jusqu'en {p.contractEnd}</div>
               </div>
               <div className="ft-row-actions">
                 {p.contractEnd <= 2027 && <button className="ft-mini-btn" onClick={() => renewContract(p)}>Prolonger</button>}
                 <button className="ft-mini-btn" onClick={() => loanOutPlayer(p, false)}>Prêter</button>
                 <button className="ft-mini-btn" onClick={() => loanOutPlayer(p, true)}>Prêter +OA</button>
                 <button className="ft-mini-btn ft-sell" onClick={() => sellPlayer(p)}>Vendre{p.value != null ? ` · ${Math.round(p.value * 0.9 * 10) / 10}M€` : ""}</button>
+                {p.verified && <button className="ft-mini-btn" onClick={() => startEditPlayer(p)}>✏️ corriger</button>}
               </div>
+              {editingPlayer === p.id && (
+                <div className="ft-edit-form">
+                  <input type="number" placeholder="Valeur M€" value={editForm.value} onChange={(e) => setEditForm((f) => ({ ...f, value: e.target.value }))} />
+                  <input type="number" placeholder="Salaire K€/mois" value={editForm.salary} onChange={(e) => setEditForm((f) => ({ ...f, salary: e.target.value }))} />
+                  <input type="number" placeholder="Contrat jusqu'en" value={editForm.contractEnd} onChange={(e) => setEditForm((f) => ({ ...f, contractEnd: e.target.value }))} />
+                  <button className="ft-mini-btn ft-buy" onClick={() => saveEditPlayer(p)}>Enregistrer</button>
+                  <button className="ft-mini-btn" onClick={() => setEditingPlayer(null)}>Annuler</button>
+                </div>
+              )}
             </div>
           ))}
 
@@ -1848,6 +1979,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-row-name { font-weight:600; }
   .ft-row-sub { font-size:10px; color:var(--muted); }
   .ft-row-actions { margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .ft-edit-form { display:flex; gap:6px; flex-wrap:wrap; width:100%; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); }
+  .ft-edit-form input { width:110px; background:var(--panel-2); border:1px solid var(--line); color:var(--chalk);
+    border-radius:7px; padding:6px 8px; font-size:11px; font-family:'Inter',sans-serif; }
   .ft-mini-btn { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; border-radius:7px; padding:6px 8px;
     border:1px solid var(--line); background:var(--panel-2); color:var(--chalk); cursor:pointer; white-space:nowrap; transition:all .15s ease; }
   .ft-mini-btn:hover:not(:disabled) { transform:translateY(-1px); }
@@ -1869,6 +2003,18 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-flash { position:sticky; top:0; z-index:5; background:var(--gold); color:var(--ink-fixed); font-size:11.5px; font-weight:600;
     padding:8px 14px; text-align:center; animation: ftFadeIn .2s ease; }
   .ft-footnote { display:flex; gap:6px; font-size:10.5px; color:var(--muted); margin-top:14px; line-height:1.4; }
+
+  .ft-help-text { font-size:12px; line-height:1.6; color:var(--chalk); max-height:60vh; overflow-y:auto; }
+  .ft-help-text p { margin:0 0 10px; }
+  .ft-help-text b { color:var(--gold); }
+  .ft-feedback-textarea { width:100%; min-height:90px; background:var(--panel-2); border:1px solid var(--line); color:var(--chalk);
+    border-radius:8px; padding:9px 10px; font-size:12px; font-family:'Inter',sans-serif; resize:vertical; }
+  .ft-site-footer { display:flex; flex-direction:column; gap:6px; align-items:center; text-align:center; margin-top:28px;
+    padding-top:16px; border-top:1px solid var(--line); font-size:11px; }
+  .ft-site-footer span { cursor:pointer; color:var(--muted); }
+  .ft-site-footer span:hover { color:var(--gold); }
+  .ft-site-footer-muted { cursor:default !important; font-size:9.5px; opacity:0.6; }
+  .ft-site-footer-muted:hover { color:var(--muted) !important; }
 
   .ft-share-card { background:linear-gradient(160deg, #121A17 0%, #0A0E12 100%); border:1px solid rgba(244,247,241,0.14);
     border-radius:16px; padding:20px; margin:16px 0 10px; color:#F4F7F1; }
