@@ -57,6 +57,16 @@ const CLUBS = [
     apiQuery: "Arsenal", coach: "Mikel Arteta", salaryCap: 195, valueCap: 980, dncg: false, startBudget: 60,
     matchNames: ["arsenal"], leagueId: 39,
   },
+  {
+    id: "lens", name: "RC Lens", code: "RCL", c1: "#FFD100", c2: "#DC052D",
+    apiQuery: "Lens", coach: "Dino Toppmöller", salaryCap: 50, valueCap: 220, dncg: false, startBudget: 15,
+    matchNames: ["lens", "racing club de lens", "rc lens"], leagueId: 61,
+    kits: {
+      home: { body: "#FFD100", trim: "#DC052D", num: "#DC052D" },
+      away: { body: "#161616", trim: "#1E8449", num: "#F4F7F1" },
+      third: { body: "#F4F7F1", trim: "#DC052D", num: "#000000" },
+    },
+  },
 ];
 
 const FALLBACK_SQUADS = {
@@ -430,6 +440,23 @@ function ClubCrest({ club, size = 40, logoUrl }) {
   );
 }
 function Jersey({ club, num, empty, mode = "home" }) {
+  if (club.kits && club.kits[mode]) {
+    const k = club.kits[mode];
+    return (
+      <span className={`ft-jersey ${empty ? "ft-jersey-empty" : ""}`} style={!empty ? { background: k.body } : {}}>
+        {!empty && (<>
+          <span className="ft-jersey-sleeve ft-jersey-sleeve-l" style={{ background: k.body }}>
+            <span className="ft-jersey-cuff" style={{ background: k.trim }} />
+          </span>
+          <span className="ft-jersey-sleeve ft-jersey-sleeve-r" style={{ background: k.body }}>
+            <span className="ft-jersey-cuff" style={{ background: k.trim }} />
+          </span>
+          <span className="ft-jersey-collar" style={{ background: k.trim }} />
+        </>)}
+        <span className="ft-jersey-num" style={empty ? {} : { color: k.num }}>{empty ? "+" : num}</span>
+      </span>
+    );
+  }
   const skyBlue = club.c1;
   const gold = club.c3 || club.c1;
   const navy = club.c2;
@@ -914,7 +941,7 @@ function FaisTonMercato() {
 
   const [prevAssignment, setPrevAssignment] = useState(null);
   useEffect(() => {
-    if (kitMode === "third" && !club?.kit3) setKitMode("home");
+    if (kitMode === "third" && !(club?.kit3 || club?.kits?.third)) setKitMode("home");
   }, [club]);
 
   const swapPlayers = (idA, idB) => {
@@ -1533,7 +1560,7 @@ function FaisTonMercato() {
             <ClubCrest club={club} size={44} logoUrl={logosCache[activeKey]?.logo} />
             <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach || logosCache[activeKey]?.coach || "inconnu"}</div></div>
             <button className="ft-back-btn" onClick={() => setKitMode((k) => {
-              const order = club.kit3 ? ["home", "away", "third"] : ["home", "away"];
+              const order = (club.kit3 || club.kits?.third) ? ["home", "away", "third"] : ["home", "away"];
               return order[(order.indexOf(k) + 1) % order.length];
             })} title="Changer de maillot">
               {kitMode === "home" ? "🏠 Domicile" : kitMode === "away" ? "✈️ Extérieur" : "🎽 Third"}
