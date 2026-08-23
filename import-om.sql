@@ -25,7 +25,8 @@ insert into player_overrides (name, value, salary_monthly, contract_end) values
 ('Amine Gouiri', 28, 474, 2029),
 ('Neal Maupay', 4, 313, 2028),
 ('Faris Moumbagna', 3.5, 115, 2028),
-('Jelle Van Neck', null, 28, 2027),
+('Jelle Van Neck', 0.05, 28, 2027),
+('Théo Vermot', 0.05, null, 2027),
 ('Tadjidine Mmadi', 0.8, null, 2029),
 ('Keyliane Abdallah', 0.05, null, 2028)
 on conflict (name) do update set

@@ -373,7 +373,12 @@ function assignSlots(squad, formationKey) {
   return assignment;
 }
 function shortName(name) { const parts = name.split(" "); return parts.length > 1 ? parts[parts.length - 1] : name; }
-function fmtValue(v) { return v == null ? "n.c." : `${v}M€`; }
+function fmtValue(v) {
+  if (v == null) return "n.c.";
+  if (v < 1) return `${Math.round(v * 1000)}K€`;
+  return `${v}M€`;
+}
+function sellFee(value) { return value == null ? 0 : Math.round(value * 0.9 * 1000) / 1000; }
 
 function subPosFromLabel(label) {
   const l = (label || "").toLowerCase();
@@ -973,12 +978,12 @@ function FaisTonMercato() {
     setFlash(`${p.name} rejoint l'effectif.`);
   };
   const sellPlayer = (p) => {
-    const fee = p.value != null ? Math.round(p.value * 0.9 * 10) / 10 : 0;
-    setTransferBudget((b) => Math.round((b + fee) * 10) / 10);
-    if (club.dncg) setDncgSold((d) => Math.round((d + fee) * 10) / 10);
+    const fee = sellFee(p.value);
+    setTransferBudget((b) => Math.round((b + fee) * 1000) / 1000);
+    if (club.dncg) setDncgSold((d) => Math.round((d + fee) * 1000) / 1000);
     setSquad((s) => s.filter((x) => x.id !== p.id));
-    logTransfer(`Vente : ${p.name}${fee ? ` (${fee}M€)` : ""}.`);
-    setFlash(`${p.name} vendu${fee ? ` pour ${fee}M€` : ""}.`);
+    logTransfer(`Vente : ${p.name}${fee ? ` (${fmtValue(fee)})` : ""}.`);
+    setFlash(`${p.name} vendu${fee ? ` pour ${fmtValue(fee)}` : ""}.`);
   };
   const loanOutPlayer = (p, withOA) => {
     setSquad((s) => s.map((x) => (x.id === p.id ? { ...x, onLoan: true, loanOA: withOA } : x)));
@@ -1693,7 +1698,7 @@ function FaisTonMercato() {
                 {p.contractEnd <= 2027 && <button className="ft-mini-btn" onClick={() => renewContract(p)}>Prolonger</button>}
                 <button className="ft-mini-btn" onClick={() => loanOutPlayer(p, false)}>Prêter</button>
                 <button className="ft-mini-btn" onClick={() => loanOutPlayer(p, true)}>Prêter +OA</button>
-                <button className="ft-mini-btn ft-sell" onClick={() => sellPlayer(p)}>Vendre{p.value != null ? ` · ${Math.round(p.value * 0.9 * 10) / 10}M€` : ""}</button>
+                <button className="ft-mini-btn ft-sell" onClick={() => sellPlayer(p)}>Vendre{p.value != null ? ` · ${fmtValue(sellFee(p.value))}` : ""}</button>
                 {p.verified && isAdmin && <button className="ft-mini-btn" onClick={() => startEditPlayer(p)}>✏️ corriger</button>}
               </div>
               {editingPlayer === p.id && (
