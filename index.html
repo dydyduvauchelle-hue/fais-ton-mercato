@@ -38,6 +38,7 @@ const Icon = ({ children, size = 14 }) => (
 const CLUBS = [
   {
     id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545", c3: "#D9B44A", c4: "#7FC4CE", c5: "#1B4FA0",
+    kit3: { body: "#C4C8ED", trim: "#1B1B2F", num: "#1B1B2F" },
     apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55, valueCap: 230, dncg: true, startBudget: 10, startDncgSold: 54,
     matchNames: ["marseille"], leagueId: 61,
   },
@@ -428,11 +429,31 @@ function ClubCrest({ club, size = 40, logoUrl }) {
       background: `linear-gradient(165deg, ${club.c1} 0%, ${club.c1} 52%, ${club.c2} 52%, ${club.c2} 100%)`, fontSize: size * 0.24 }}>{club.code}</div>
   );
 }
-function Jersey({ club, num, empty, home = true }) {
+function Jersey({ club, num, empty, mode = "home" }) {
   const skyBlue = club.c1;
   const gold = club.c3 || club.c1;
   const navy = club.c2;
   const skyLight = club.c4 || lighten(club.c1);
+
+  if (mode === "third" && club.kit3) {
+    const k = club.kit3;
+    return (
+      <span className={`ft-jersey ${empty ? "ft-jersey-empty" : ""}`} style={!empty ? { background: k.body } : {}}>
+        {!empty && (<>
+          <span className="ft-jersey-sleeve ft-jersey-sleeve-l" style={{ background: k.body }}>
+            <span className="ft-jersey-cuff" style={{ background: k.trim }} />
+          </span>
+          <span className="ft-jersey-sleeve ft-jersey-sleeve-r" style={{ background: k.body }}>
+            <span className="ft-jersey-cuff" style={{ background: k.trim }} />
+          </span>
+          <span className="ft-jersey-collar" style={{ background: k.trim }} />
+        </>)}
+        <span className="ft-jersey-num" style={empty ? {} : { color: k.num }}>{empty ? "+" : num}</span>
+      </span>
+    );
+  }
+
+  const home = mode === "home";
   const body = home ? "#F5F3EC" : navy;
   const cuffGradient = home
     ? `linear-gradient(90deg, ${skyBlue} 0 33%, ${gold} 33% 66%, ${skyBlue} 66% 100%)`
@@ -482,7 +503,7 @@ function makeTable(club) {
 /* ==================================================================== */
 function FaisTonMercato() {
   const [activeKey, setActiveKey] = useState(null);
-  const [kitHome, setKitHome] = useState(true);
+  const [kitMode, setKitMode] = useState("home");
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem("ftm-theme") || "dark"; } catch (e) { return "dark"; } });
   useEffect(() => { try { localStorage.setItem("ftm-theme", theme); } catch (e) {} document.body.style.background = theme === "light" ? "#EAEDEA" : "#05080a"; }, [theme]);
   const [dynamicClubs, setDynamicClubs] = useState({});
@@ -892,6 +913,10 @@ function FaisTonMercato() {
   };
 
   const [prevAssignment, setPrevAssignment] = useState(null);
+  useEffect(() => {
+    if (kitMode === "third" && !club?.kit3) setKitMode("home");
+  }, [club]);
+
   const swapPlayers = (idA, idB) => {
     if (!idA || !idB || idA === idB) return;
     setAssignment((prev) => {
@@ -1144,7 +1169,7 @@ function FaisTonMercato() {
         onTouchStart={player ? onChipTouchStart(player.id) : undefined}
         onTouchMove={player ? onChipTouchMove : undefined}
         onTouchEnd={player ? onChipTouchEnd : undefined}>
-        <Jersey club={club} num={player?.num} empty={isEmpty} home={kitHome} />
+        <Jersey club={club} num={player?.num} empty={isEmpty} mode={kitMode} />
         <span className="ft-chip-name">{player ? shortName(player.name) : CAT_LABEL[slot.cat]}</span>
         {player && <span className="ft-chip-tag">{getSubPos(player) || player.cat}{size !== "sm" && ` · ${fmtValue(player.value)}`}</span>}
       </button>
@@ -1507,7 +1532,12 @@ function FaisTonMercato() {
             <button className="ft-back-btn" onClick={() => setView("home")}>←</button>
             <ClubCrest club={club} size={44} logoUrl={logosCache[activeKey]?.logo} />
             <div><div className="ft-club">{club.name}</div><div className="ft-coach">Entraîneur : {club.coach || logosCache[activeKey]?.coach || "inconnu"}</div></div>
-            <button className="ft-back-btn" onClick={() => setKitHome((k) => !k)} title="Changer de maillot">{kitHome ? "🏠 Domicile" : "✈️ Extérieur"}</button>
+            <button className="ft-back-btn" onClick={() => setKitMode((k) => {
+              const order = club.kit3 ? ["home", "away", "third"] : ["home", "away"];
+              return order[(order.indexOf(k) + 1) % order.length];
+            })} title="Changer de maillot">
+              {kitMode === "home" ? "🏠 Domicile" : kitMode === "away" ? "✈️ Extérieur" : "🎽 Third"}
+            </button>
             <select className="ft-formation-select" value={formation} onChange={(e) => setFormation(e.target.value)}>
               {Object.keys(FORMATIONS).map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
