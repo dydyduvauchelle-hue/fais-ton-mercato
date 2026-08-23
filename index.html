@@ -39,7 +39,11 @@ const CLUBS = [
   {
     id: "om", name: "Olympique de Marseille", code: "OM", c1: "#2AABE2", c2: "#0B2545", c3: "#D9B44A", c4: "#7FC4CE", c5: "#1B4FA0",
     kit3: { body: "#C4C8ED", trim: "#1B1B2F", num: "#1B1B2F" },
-    apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 55, valueCap: 230, dncg: true, startBudget: 10, startDncgSold: 54,
+    defaultLineup: { formation: "4-3-3", starters: {
+      GK: "Lange", DR: "Weah", DCR: "Egan-Riley", DCL: "Kondogbia", DL: "Emerson",
+      MC: "Højbjerg", MCL: "Abdelli", MCR: "Gomes", FL: "Harit", ST: "Gouiri", FR: "Paixão",
+    }, bench: ["Vermot", "Aguerd", "Bezahaf", "Cornelius", "Garcia", "Nnadi", "Abdallah", "Mmadi", "Maupay"] },
+    apiQuery: "Marseille", coach: "Bruno Genesio", salaryCap: 80, valueCap: 230, dncg: true, startBudget: 10, startDncgSold: 54,
     matchNames: ["marseille"], leagueId: 61,
   },
   {
@@ -59,8 +63,13 @@ const CLUBS = [
   },
   {
     id: "lens", name: "RC Lens", code: "RCL", c1: "#FFD100", c2: "#DC052D",
-    apiQuery: "Lens", coach: "Dino Toppmöller", salaryCap: 50, valueCap: 220, dncg: false, startBudget: 15,
+    apiQuery: "Lens", coach: "Dino Toppmöller", salaryCap: 50, valueCap: 220, dncg: false, startBudget: 15, noWageCap: true,
     matchNames: ["lens", "racing club de lens", "rc lens"], leagueId: 61,
+    defaultLineup: { formation: "3-4-2-1", starters: {
+      GK: "Risser", DCL: "Nawrocki", DC: "Ganiou", DCR: "Sagnan",
+      MR: "Abdulhamid", MCR: "Titraoui", MCL: "Cuisance", ML: "Udol",
+      AMR: "Thauvin", AML: "Ivanovic", ST: "Sima",
+    }, bench: ["Bulatovic", "Skoras", "Haidara", "Hazard", "Edouard", "Gorgelin", "Sotoca", "Fofana", "Mesloub"] },
     kits: {
       home: { body: "#FFD100", trim: "#DC052D", num: "#DC052D" },
       away: { body: "#161616", trim: "#1E8449", num: "#F4F7F1" },
@@ -370,17 +379,37 @@ const FORMATIONS = {
   ],
 };
 
-function assignSlots(squad, formationKey) {
+function assignSlots(squad, formationKey, preferredNames, preferredBench) {
   const slots = FORMATIONS[formationKey];
   const pool = squad.filter((p) => !p.onLoan);
   const used = new Set();
   const assignment = {};
+  if (preferredNames) {
+    slots.forEach((slot) => {
+      const wanted = preferredNames[slot.id];
+      if (!wanted) return;
+      const match = pool.find((p) => !used.has(p.id) && p.name.toLowerCase().includes(wanted.toLowerCase()));
+      if (match) { assignment[match.id] = slot.id; used.add(match.id); }
+    });
+  }
   slots.forEach((slot) => {
+    if (Object.values(assignment).includes(slot.id)) return;
     const candidate = pool.find((p) => p.cat === slot.cat && !used.has(p.id));
     if (candidate) { assignment[candidate.id] = slot.id; used.add(candidate.id); }
   });
+  let benchCount = 0;
+  if (preferredBench) {
+    preferredBench.forEach((wanted) => {
+      if (benchCount >= BENCH_SIZE) return;
+      const match = pool.find((p) => !used.has(p.id) && p.name.toLowerCase().includes(wanted.toLowerCase()));
+      if (match) { assignment[match.id] = "BENCH"; used.add(match.id); benchCount++; }
+    });
+  }
   const remaining = pool.filter((p) => !used.has(p.id));
-  remaining.forEach((p, i) => { assignment[p.id] = i < BENCH_SIZE ? "BENCH" : "RESERVE"; });
+  remaining.forEach((p) => {
+    if (benchCount < BENCH_SIZE) { assignment[p.id] = "BENCH"; benchCount++; }
+    else { assignment[p.id] = "RESERVE"; }
+  });
   return assignment;
 }
 function shortName(name) { const parts = name.split(" "); return parts.length > 1 ? parts[parts.length - 1] : name; }
@@ -710,6 +739,7 @@ function FaisTonMercato() {
     if (!c) return;
     setDataSource("loading");
     setSquad([]);
+    setFormation(c.defaultLineup?.formation || "4-3-3");
     setTransferBudget(c.startBudget ?? START_TRANSFER_BUDGET);
     setDncgSold(c.startDncgSold || 0);
     setMarketPool([]);
@@ -888,7 +918,13 @@ function FaisTonMercato() {
     setView("squad");
   };
 
-  useEffect(() => { setAssignment(assignSlots(squad, formation)); setSelected(null); setPrevAssignment(null); }, [formation, squad]);
+  useEffect(() => {
+    const matches = club?.defaultLineup?.formation === formation;
+    const preferred = matches ? club.defaultLineup.starters : null;
+    const preferredBench = matches ? club.defaultLineup.bench : null;
+    setAssignment(assignSlots(squad, formation, preferred, preferredBench));
+    setSelected(null); setPrevAssignment(null);
+  }, [formation, squad, club]);
 
   const slots = FORMATIONS[formation];
   const autoScrollByY = (y) => {
@@ -1571,8 +1607,12 @@ function FaisTonMercato() {
           </div>
           <div className="ft-budget">
             <Icon>🧾</Icon>
-            <div className="ft-budget-track"><div className={`ft-budget-fill ${score.wageBill > club.salaryCap ? "ft-over" : ""}`} style={{ width: `${Math.min(100, (score.wageBill / club.salaryCap) * 100)}%` }} /></div>
-            <div className="ft-budget-label">{score.wageBill}M€/an · plafond {club.salaryCap}M€ (estimé) · encadrement de la masse salariale et des indemnités</div>
+            {club.noWageCap ? (
+              <div className="ft-budget-label">Masse salariale estimée : {score.wageBill}M€/an — pas de plafond ni d'encadrement DNCG pour ce club</div>
+            ) : (<>
+              <div className="ft-budget-track"><div className={`ft-budget-fill ${score.wageBill > club.salaryCap ? "ft-over" : ""}`} style={{ width: `${Math.min(100, (score.wageBill / club.salaryCap) * 100)}%` }} /></div>
+              <div className="ft-budget-label">{score.wageBill}M€/an · plafond {club.salaryCap}M€ (estimé) · encadrement de la masse salariale et des indemnités</div>
+            </>)}
           </div>
 
           <div className="ft-squad-grid">
