@@ -223,6 +223,39 @@ const MARKET_POOL = [
 ];
 
 const CAT_LABEL = { GK: "Gardien", DEF: "Défenseur", MID: "Milieu", FWD: "Attaquant" };
+// Sportmonks ne traduit pas encore en français (confirmé : le français est
+// "en préparation" chez eux) — on traduit nous-mêmes les noms de pays les
+// plus courants en football pour une liste déroulante en français.
+const COUNTRIES_FR = [
+  ["Germany", "Allemagne"], ["Angola", "Angola"], ["Saudi Arabia", "Arabie Saoudite"], ["Argentina", "Argentine"],
+  ["Austria", "Autriche"], ["Belgium", "Belgique"], ["Benin", "Bénin"], ["Bosnia and Herzegovina", "Bosnie-Herzégovine"],
+  ["Brazil", "Brésil"], ["Bulgaria", "Bulgarie"], ["Burkina Faso", "Burkina Faso"], ["Cameroon", "Cameroun"],
+  ["Canada", "Canada"], ["Chile", "Chili"], ["China", "Chine"], ["Colombia", "Colombie"],
+  ["South Korea", "Corée du Sud"], ["Ivory Coast", "Côte d'Ivoire"], ["Croatia", "Croatie"], ["Denmark", "Danemark"],
+  ["Egypt", "Égypte"], ["England", "Angleterre"], ["Spain", "Espagne"], ["Estonia", "Estonie"],
+  ["United States", "États-Unis"], ["Finland", "Finlande"], ["France", "France"], ["Gabon", "Gabon"],
+  ["Wales", "Pays de Galles"], ["Ghana", "Ghana"], ["Greece", "Grèce"], ["Guinea", "Guinée"],
+  ["Hungary", "Hongrie"], ["Iceland", "Islande"], ["Israel", "Israël"], ["Italy", "Italie"],
+  ["Jamaica", "Jamaïque"], ["Japan", "Japon"], ["Mali", "Mali"], ["Morocco", "Maroc"],
+  ["Mexico", "Mexique"], ["Nigeria", "Nigéria"], ["Norway", "Norvège"], ["New Zealand", "Nouvelle-Zélande"],
+  ["Netherlands", "Pays-Bas"], ["Peru", "Pérou"], ["Poland", "Pologne"], ["Portugal", "Portugal"],
+  ["Northern Ireland", "Irlande du Nord"], ["Ireland", "Irlande"], ["Czech Republic", "République Tchèque"],
+  ["Romania", "Roumanie"], ["England", "Angleterre"], ["Scotland", "Écosse"], ["Senegal", "Sénégal"],
+  ["Serbia", "Serbie"], ["Slovakia", "Slovaquie"], ["Slovenia", "Slovénie"], ["Sweden", "Suède"],
+  ["Switzerland", "Suisse"], ["Tunisia", "Tunisie"], ["Turkey", "Turquie"], ["Ukraine", "Ukraine"],
+  ["Uruguay", "Uruguay"], ["Venezuela", "Venezuela"], ["DR Congo", "RD Congo"], ["Algeria", "Algérie"],
+  ["Australia", "Australie"], ["Georgia", "Géorgie"], ["Albania", "Albanie"], ["Ecuador", "Équateur"],
+  ["Paraguay", "Paraguay"], ["Bolivia", "Bolivie"], ["Costa Rica", "Costa Rica"], ["Panama", "Panama"],
+  ["Qatar", "Qatar"], ["United Arab Emirates", "Émirats Arabes Unis"], ["Iran", "Iran"], ["Iraq", "Irak"],
+].sort((a, b) => a[1].localeCompare(b[1], "fr"));
+// Quelques équivalences de villes/clubs pour aider la recherche (Sportmonks utilise le nom anglais/local).
+const CLUB_NAME_FR_TO_EN = {
+  "barcelone": "barcelona", "londres": "london", "naples": "napoli", "turin": "torino",
+  "séville": "sevilla", "seville": "sevilla", "gênes": "genova", "genes": "genova",
+  "lisbonne": "lisboa", "moscou": "moskva", "athènes": "athina", "athenes": "athina",
+  "varsovie": "warszawa", "la haye": "den haag", "florence": "firenze", "rome": "roma",
+  "munich": "munchen",
+};
 const CAT_ORDER = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
 const POS_MAP = { Goalkeeper: "GK", Defender: "DEF", Midfielder: "MID", Attacker: "FWD" };
 const BENCH_SIZE = 9;
@@ -1209,7 +1242,10 @@ function FaisTonMercato() {
     setSearching(true); setSearchResults([]);
     try {
       const params = new URLSearchParams({ q: searchQuery.trim() });
-      if (searchClub.trim()) params.set("club", searchClub.trim());
+      if (searchClub.trim()) {
+        const clubRaw = searchClub.trim().toLowerCase();
+        params.set("club", CLUB_NAME_FR_TO_EN[clubRaw] || searchClub.trim());
+      }
       if (searchNat.trim()) params.set("nat", searchNat.trim());
       const r = await fetch(`/api/search-player?${params.toString()}`);
       const data = await r.json();
@@ -1799,7 +1835,10 @@ function FaisTonMercato() {
             {showSearchFilters && (
               <div className="ft-search-filters">
                 <input placeholder="Club (optionnel)" value={searchClub} onChange={(e) => setSearchClub(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchPlayer()} />
-                <input placeholder="Nationalité (optionnel)" value={searchNat} onChange={(e) => setSearchNat(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchPlayer()} />
+                <select value={searchNat} onChange={(e) => setSearchNat(e.target.value)}>
+                  <option value="">Nationalité (optionnel)</option>
+                  {COUNTRIES_FR.map(([en, fr]) => <option key={en} value={en}>{fr}</option>)}
+                </select>
               </div>
             )}
             {searchResults.length > 0 && (
@@ -2146,7 +2185,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-search-results { display:flex; flex-direction:column; gap:4px; margin-bottom:8px; }
   .ft-search-results-scroll { max-height:340px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; padding:6px; }
   .ft-search-filters { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
-  .ft-search-filters input { background:var(--panel-2); border:1px solid var(--line); color:var(--chalk);
+  .ft-search-filters input, .ft-search-filters select { background:var(--panel-2); border:1px solid var(--line); color:var(--chalk);
     border-radius:8px; padding:8px 10px; font-size:11.5px; font-family:'Inter',sans-serif; }
   .ft-search-result { display:flex; align-items:center; gap:10px; background:var(--panel-2); border:1px solid var(--line);
     border-radius:8px; padding:6px 8px; cursor:pointer; font-size:11px; transition:all .15s ease; }
