@@ -948,12 +948,14 @@ function FaisTonMercato() {
   }, []);
 
   // Glisser-déposer tactile : l'API native HTML5 ne fonctionne pas sur mobile,
-  // on gère donc nous-mêmes appui-maintien + déplacement du doigt.
-  const touchDragRef = React.useRef({ id: null, moved: false, startX: 0, startY: 0 });
+  // on gère donc nous-mêmes appui-maintien + déplacement du doigt, avec un
+  // maillot "fantôme" qui suit le doigt pour un vrai retour visuel.
+  const touchDragRef = React.useRef({ id: null, player: null, moved: false, startX: 0, startY: 0 });
   const [touchDragId, setTouchDragId] = useState(null);
-  const onChipTouchStart = (id) => (e) => {
+  const [touchGhost, setTouchGhost] = useState(null);
+  const onChipTouchStart = (player) => (e) => {
     const t = e.touches[0];
-    touchDragRef.current = { id, moved: false, startX: t.clientX, startY: t.clientY };
+    touchDragRef.current = { id: player.id, player, moved: false, startX: t.clientX, startY: t.clientY };
   };
   const onChipTouchMove = (e) => {
     const drag = touchDragRef.current;
@@ -967,12 +969,16 @@ function FaisTonMercato() {
           setTouchDragId(drag.id);
         } else {
           // Mouvement surtout horizontal : probablement un défilement du banc, pas un glisser-déposer.
-          touchDragRef.current = { id: null, moved: false, startX: 0, startY: 0 };
+          touchDragRef.current = { id: null, player: null, moved: false, startX: 0, startY: 0 };
           return;
         }
       }
     }
-    if (drag.moved) { e.preventDefault(); autoScrollByY(t.clientY); }
+    if (drag.moved) {
+      e.preventDefault();
+      autoScrollByY(t.clientY);
+      setTouchGhost({ x: t.clientX, y: t.clientY, player: drag.player });
+    }
   };
   const onChipTouchEnd = (e) => {
     const drag = touchDragRef.current;
@@ -989,8 +995,9 @@ function FaisTonMercato() {
         else if (ts) setAssignment((prev) => ({ ...prev, [drag.id]: ts }));
       }
     }
-    touchDragRef.current = { id: null, moved: false, startX: 0, startY: 0 };
+    touchDragRef.current = { id: null, player: null, moved: false, startX: 0, startY: 0 };
     setTouchDragId(null);
+    setTouchGhost(null);
   };
 
   const [prevAssignment, setPrevAssignment] = useState(null);
@@ -1234,7 +1241,7 @@ function FaisTonMercato() {
       else if (slot) setAssignment((prev) => ({ ...prev, [draggedId]: slot.id }));
     };
     return (
-      <button className={`ft-chip ft-chip-${size} ${isSelected || isTouchDragged ? "ft-chip-sel" : ""} ${isEmpty ? "ft-chip-empty" : ""}`}
+      <button className={`ft-chip ft-chip-${size} ${isSelected || isTouchDragged ? "ft-chip-sel" : ""} ${isEmpty ? "ft-chip-empty" : ""} ${isTouchDragged ? "ft-chip-dragging" : ""}`}
         onClick={() => player && handleSelect(player.id)}
         draggable={!isEmpty}
         onDragStart={(e) => player && e.dataTransfer.setData("text/plain", player.id)}
@@ -1242,7 +1249,7 @@ function FaisTonMercato() {
         onDrop={onDropHere}
         data-player-id={player ? player.id : undefined}
         data-slot-id={!player && slot ? slot.id : undefined}
-        onTouchStart={player ? onChipTouchStart(player.id) : undefined}
+        onTouchStart={player ? onChipTouchStart(player) : undefined}
         onTouchMove={player ? onChipTouchMove : undefined}
         onTouchEnd={player ? onChipTouchEnd : undefined}>
         <Jersey club={club} num={player?.num} empty={isEmpty} mode={kitMode} />
@@ -1429,6 +1436,11 @@ function FaisTonMercato() {
         <button className="ft-account-btn" onClick={() => { setShowAuth(true); loadMySaves(); }}><Icon>👤</Icon></button>
       </nav>
       {flash && <div className="ft-flash">{flash}</div>}
+      {touchGhost && (
+        <div className="ft-touch-ghost" style={{ left: touchGhost.x, top: touchGhost.y }}>
+          <Jersey club={club} num={touchGhost.player.num} mode={kitMode} />
+        </div>
+      )}
 
       {showAuth && (
         <div className="ft-modal-backdrop" onClick={() => setShowAuth(false)}>
@@ -1652,7 +1664,7 @@ function FaisTonMercato() {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => { e.preventDefault(); swapPlayers(e.dataTransfer.getData("text/plain"), p.id); }}
                 data-player-id={p.id}
-                onTouchStart={onChipTouchStart(p.id)} onTouchMove={onChipTouchMove} onTouchEnd={onChipTouchEnd}>
+                onTouchStart={onChipTouchStart(p)} onTouchMove={onChipTouchMove} onTouchEnd={onChipTouchEnd}>
                 <span className="ft-res-num">{p.num}</span>{shortName(p.name)}<span className="ft-res-pos">{getSubPos(p) || p.cat}</span>
               </div>
             ))}
@@ -2095,6 +2107,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
     touch-action:none; -webkit-tap-highlight-color:transparent; }
   .ft-res-pill:hover { border-color:var(--gold); }
   .ft-res-pill.ft-chip-sel { outline:2px solid var(--chalk); }
+  .ft-chip-dragging { opacity:0.3; }
+  .ft-touch-ghost { position:fixed; transform:translate(-50%,-55%) scale(1.25); pointer-events:none; z-index:999;
+    filter:drop-shadow(0 8px 18px rgba(0,0,0,0.55)); transition:none; }
   .ft-res-num { width:18px; height:18px; border-radius:50%; background:#0B2545; color:#fff; display:flex; align-items:center;
     justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; }
   .ft-res-pos { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); margin-left:2px; }
