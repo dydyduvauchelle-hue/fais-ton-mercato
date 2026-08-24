@@ -419,6 +419,12 @@ function fmtValue(v) {
   return `${v}M€`;
 }
 function sellFee(value) { return value == null ? 0 : Math.round(value * 0.9 * 1000) / 1000; }
+function calcOA(value, age) {
+  if (value == null) return 0;
+  const a = age || 25;
+  const mult = a <= 21 ? 1.25 : a <= 24 ? 1.15 : a <= 28 ? 1.05 : 1;
+  return Math.round(value * mult * 1000) / 1000;
+}
 
 function subPosFromLabel(label) {
   const l = (label || "").toLowerCase();
@@ -583,7 +589,7 @@ function FaisTonMercato() {
   const [flash, setFlash] = useState("");
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(""), 2600); return () => clearTimeout(t); }, [flash]);
   const [marketSearch, setMarketSearch] = useState("");
-  const [customForm, setCustomForm] = useState({ name: "", cat: "MID", age: "", value: "", num: "", photo: null, verified: false, fromClub: "", subPos: "" });
+  const [customForm, setCustomForm] = useState({ name: "", cat: "", age: "", value: "", num: "", photo: null, verified: false, fromClub: "", subPos: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -1164,23 +1170,29 @@ function FaisTonMercato() {
 
   const addCustomPlayer = () => {
     if (!customForm.name.trim()) return;
+    if (!customForm.cat) { setFlash("Choisis d'abord un poste."); return; }
     const base = { id: `custom-${Date.now()}`, name: customForm.name.trim(), cat: customForm.cat, pos: CAT_LABEL[customForm.cat], subPos: customForm.subPos || "",
       age: Number(customForm.age) || 20, value: Number(customForm.value) || 1, num: Number(customForm.num) || 0, photo: customForm.photo || null, verified: !!customForm.verified, fromClub: customForm.fromClub || "" };
     const rival = isRivalOrigin(club.name, base.fromClub);
     setMarketPool((m) => [...m, base]);
     setFlash(`${base.name} ajouté aux pistes.${rival ? " ⚠️ Rival historique — signature très rare en vrai." : ""}`);
-    setCustomForm({ name: "", cat: "MID", age: "", value: "", num: "", photo: null, verified: false, fromClub: "", subPos: "" });
+    setCustomForm({ name: "", cat: "", age: "", value: "", num: "", photo: null, verified: false, fromClub: "", subPos: "" });
     setSearchResults([]);
   };
-  const loanInPiste = (piste) => {
-    const fee = Math.max(1, Math.round(piste.value * 0.15 * 10) / 10);
-    if (transferBudget < fee) { setFlash("Budget insuffisant pour ce prêt."); return; }
+  const loanInSimple = (piste) => {
     const rival = isRivalOrigin(club.name, piste.fromClub);
-    setTransferBudget((b) => Math.round((b - fee) * 10) / 10);
     setSquad((s) => [...s, { ...piste, num: piste.num || 99, onLoan: false, loanOA: false, loanedIn: true }]);
     setMarketPool((m) => m.filter((p) => p.id !== piste.id));
-    logTransfer(`Prêt entrant : ${piste.name} (indemnité ${fee}M€).`);
-    setFlash(`${piste.name} arrive en prêt (indemnité ${fee}M€).${rival ? " ⚠️ Rival historique." : ""}`);
+    logTransfer(`Prêt entrant : ${piste.name} (sans option d'achat).`);
+    setFlash(`${piste.name} arrive en prêt.${rival ? " ⚠️ Rival historique." : ""}`);
+  };
+  const loanInWithOA = (piste) => {
+    const oa = calcOA(piste.value, piste.age);
+    const rival = isRivalOrigin(club.name, piste.fromClub);
+    setSquad((s) => [...s, { ...piste, num: piste.num || 99, onLoan: false, loanOA: true, oaValue: oa, loanedIn: true }]);
+    setMarketPool((m) => m.filter((p) => p.id !== piste.id));
+    logTransfer(`Prêt entrant : ${piste.name} (option d'achat ${fmtValue(oa)}).`);
+    setFlash(`${piste.name} arrive en prêt avec option d'achat à ${fmtValue(oa)}.${rival ? " ⚠️ Rival historique." : ""}`);
   };
   const searchPlayer = async () => {
     if (searchQuery.trim().length < 3) { setFlash("Tape au moins 3 lettres."); return; }
@@ -1194,10 +1206,15 @@ function FaisTonMercato() {
     } catch (err) { setFlash(`Recherche échouée : ${err.message}`); } finally { setSearching(false); }
   };
   const pickSearchResult = (r) => {
-    setCustomForm({ name: r.name, cat: POS_MAP[r.position] || r.position || "MID", age: r.age || 20,
-      value: estimateValue(r.age, POS_MAP[r.position] || r.position || "MID", r.number || 0), num: r.number || "", photo: r.photo || null, verified: true, fromClub: r.team || "", subPos: r.subPos || "" });
+    const cat = POS_MAP[r.position] || r.position || "MID";
+    const piste = { id: `custom-${Date.now()}`, name: r.name, cat, pos: CAT_LABEL[cat], subPos: r.subPos || "",
+      age: r.age || 20, value: estimateValue(r.age, cat, r.number || 0), num: r.number || 0,
+      photo: r.photo || null, verified: true, fromClub: r.team || "" };
+    const rival = isRivalOrigin(club.name, piste.fromClub);
+    setMarketPool((m) => [...m, piste]);
     setSearchResults([]);
-    setFlash(`${r.name} — infos remplies automatiquement, vérifie avant d'ajouter.`);
+    setSearchQuery("");
+    setFlash(`${piste.name} ajouté aux pistes.${rival ? " ⚠️ Rival historique — signature très rare en vrai." : ""}`);
   };
 
   const Chip = ({ player, slot, size = "md" }) => {
@@ -1398,9 +1415,9 @@ function FaisTonMercato() {
   return (
     <div className={`ft-root ${theme === "light" ? "theme-light" : ""}`} style={{ "--cc1": club?.c1 || "#E6B450", "--cc2": club?.c2 || "#2F9E74" }}>
       <nav className="ft-nav">
-        <button className={`ft-nav-btn ${view === "home" ? "ft-active" : ""}`} onClick={() => setView("home")}><Icon>🏠</Icon> Accueil</button>
-        <button className={`ft-nav-btn ${view === "squad" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("squad")}><Icon>👕</Icon> Compositeur</button>
-        <button className={`ft-nav-btn ${view === "market" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("market")}><Icon>🔁</Icon> Marché</button>
+        <button className={`ft-nav-btn ${view === "home" ? "ft-active" : ""}`} onClick={() => setView("home")}><Icon>🏠</Icon><span className="ft-nav-label">Accueil</span></button>
+        <button className={`ft-nav-btn ${view === "squad" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("squad")}><Icon>👕</Icon><span className="ft-nav-label">Compositeur</span></button>
+        <button className={`ft-nav-btn ${view === "market" ? "ft-active" : ""}`} disabled={!club} onClick={() => club && setView("market")}><Icon>🔁</Icon><span className="ft-nav-label">Marché</span></button>
         <button className="ft-account-btn" onClick={() => setShowHelp(true)} title="Aide"><Icon>❓</Icon></button>
         <button className="ft-account-btn" onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} title="Changer de thème"><Icon>{theme === "light" ? "🌙" : "☀️"}</Icon></button>
         <button className="ft-account-btn" onClick={() => { setShowAuth(true); loadMySaves(); }}><Icon>👤</Icon></button>
@@ -1745,7 +1762,8 @@ function FaisTonMercato() {
                 <div><div className="ft-row-name">{p.name}</div><div className="ft-row-sub">{p.pos} · {p.age} ans</div></div>
                 <div className="ft-row-actions">
                   <button className="ft-mini-btn ft-buy" disabled={transferBudget < p.value} onClick={() => buyPlayer(p)}>Acheter · {fmtValue(p.value)}</button>
-                  <button className="ft-mini-btn" disabled={transferBudget < Math.max(1, Math.round(p.value * 0.15 * 10) / 10)} onClick={() => loanInPiste(p)}>Prêter · OA {fmtValue(Math.max(1, Math.round(p.value * 0.15 * 10) / 10))}</button>
+                  <button className="ft-mini-btn" onClick={() => loanInSimple(p)}>Prêter</button>
+                  <button className="ft-mini-btn" onClick={() => loanInWithOA(p)}>Prêter · OA {fmtValue(calcOA(p.value, p.age))}</button>
                 </div>
               </div>
             ))}
@@ -1771,6 +1789,7 @@ function FaisTonMercato() {
             <div className="ft-custom-grid">
               <input placeholder="Nom du joueur" value={customForm.name} onChange={(e) => setCustomForm((f) => ({ ...f, name: e.target.value }))} />
               <select value={customForm.cat} onChange={(e) => setCustomForm((f) => ({ ...f, cat: e.target.value }))}>
+                <option value="" disabled>Poste</option>
                 <option value="GK">Gardien</option><option value="DEF">Défenseur</option><option value="MID">Milieu</option><option value="FWD">Attaquant</option>
               </select>
               <input type="number" placeholder="Âge" value={customForm.age} onChange={(e) => setCustomForm((f) => ({ ...f, age: e.target.value }))} />
@@ -1926,6 +1945,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-root.theme-light .ft-jersey { box-shadow:0 2px 6px rgba(0,0,0,0.15); }
   .ft-root.theme-light .ft-skeleton { background:linear-gradient(90deg, #E8ECE9, #F3F5F3, #E8ECE9); }
   .ft-nav { display:flex; gap:4px; padding:12px 14px; border-bottom:1px solid var(--line); background:var(--panel); align-items:center; }
+  @media (max-width: 480px) {
+    .ft-nav { padding:10px 8px; gap:2px; }
+    .ft-nav-label { display:none; }
+    .ft-nav-btn { padding:8px; }
+    .ft-account-btn { width:28px; height:28px; }
+  }
   .ft-nav-btn { display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600; color:var(--muted);
     background:transparent; border:none; padding:7px 10px; border-radius:8px; cursor:pointer; transition:all .15s ease; }
   .ft-nav-btn:hover { color:var(--chalk); background:var(--panel-2); }
@@ -2007,11 +2032,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
     border:1px solid var(--line); color:var(--muted); padding:6px 8px; border-radius:8px; cursor:pointer; transition:all .15s ease; }
   .ft-fbtn:hover { color:var(--chalk); }
   .ft-fbtn-active { background:var(--gold); color:var(--ink-fixed); border-color:var(--gold); }
-  .ft-budget { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:11.5px; }
-  .ft-budget-track { flex:1; height:8px; border-radius:5px; background:var(--panel); overflow:hidden; }
+  .ft-budget { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-bottom:10px; font-size:11.5px; }
+  .ft-budget-track { flex:1; min-width:60px; height:8px; border-radius:5px; background:var(--panel); overflow:hidden; }
   .ft-budget-fill { height:100%; background:linear-gradient(90deg,var(--gold),#F2CE86); transition:width .4s ease; }
   .ft-budget-fill.ft-over { background:linear-gradient(90deg,var(--coral),#ff8a75); }
-  .ft-budget-label { font-family:'IBM Plex Mono',monospace; color:var(--muted); white-space:nowrap; }
+  .ft-budget-label { font-family:'IBM Plex Mono',monospace; color:var(--muted); white-space:normal; }
 
   .ft-pitch { position:relative; width:100%; aspect-ratio:3/4.1; border-radius:14px; overflow:hidden; margin-top:6px;
     background:repeating-linear-gradient(180deg, var(--pitch-a) 0 11%, var(--pitch-b) 11% 22%); border:1px solid var(--line);
