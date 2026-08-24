@@ -583,7 +583,7 @@ function FaisTonMercato() {
   const [flash, setFlash] = useState("");
   useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(""), 2600); return () => clearTimeout(t); }, [flash]);
   const [marketSearch, setMarketSearch] = useState("");
-  const [customForm, setCustomForm] = useState({ name: "", cat: "MID", age: 24, value: 10, num: "", photo: null, verified: false, fromClub: "", subPos: "" });
+  const [customForm, setCustomForm] = useState({ name: "", cat: "MID", age: "", value: "", num: "", photo: null, verified: false, fromClub: "", subPos: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -950,9 +950,18 @@ function FaisTonMercato() {
     const drag = touchDragRef.current;
     if (!drag.id) return;
     const t = e.touches[0];
+    const dx = t.clientX - drag.startX, dy = t.clientY - drag.startY;
     if (!drag.moved) {
-      const dx = Math.abs(t.clientX - drag.startX), dy = Math.abs(t.clientY - drag.startY);
-      if (dx > 10 || dy > 10) { drag.moved = true; setTouchDragId(drag.id); }
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        if (Math.abs(dy) >= Math.abs(dx) * 0.7) {
+          drag.moved = true;
+          setTouchDragId(drag.id);
+        } else {
+          // Mouvement surtout horizontal : probablement un défilement du banc, pas un glisser-déposer.
+          touchDragRef.current = { id: null, moved: false, startX: 0, startY: 0 };
+          return;
+        }
+      }
     }
     if (drag.moved) { e.preventDefault(); autoScrollByY(t.clientY); }
   };
@@ -1153,22 +1162,25 @@ function FaisTonMercato() {
     setFlash(`Saison simulée : ${rank}${rank === 1 ? "er" : "ème"} place, ${self.pts} points.`);
   };
 
-  const addCustomPlayer = (mode) => {
+  const addCustomPlayer = () => {
     if (!customForm.name.trim()) return;
     const base = { id: `custom-${Date.now()}`, name: customForm.name.trim(), cat: customForm.cat, pos: CAT_LABEL[customForm.cat], subPos: customForm.subPos || "",
-      age: Number(customForm.age) || 20, value: Number(customForm.value) || 1, photo: customForm.photo || null, verified: !!customForm.verified, fromClub: customForm.fromClub || "" };
+      age: Number(customForm.age) || 20, value: Number(customForm.value) || 1, num: Number(customForm.num) || 0, photo: customForm.photo || null, verified: !!customForm.verified, fromClub: customForm.fromClub || "" };
     const rival = isRivalOrigin(club.name, base.fromClub);
-    if (mode === "achat") { setMarketPool((m) => [...m, base]); setFlash(`${base.name} ajouté aux pistes du marché.${rival ? " ⚠️ Rival historique — signature très rare en vrai." : ""}`); }
-    else {
-      const fee = Math.max(1, Math.round(base.value * 0.15 * 10) / 10);
-      if (transferBudget < fee) { setFlash("Budget insuffisant pour ce prêt."); return; }
-      setTransferBudget((b) => Math.round((b - fee) * 10) / 10);
-      setSquad((s) => [...s, { ...base, num: Number(customForm.num) || 99, onLoan: false, loanOA: false, loanedIn: true }]);
-      logTransfer(`Prêt entrant : ${base.name} (indemnité ${fee}M€).`);
-      setFlash(`${base.name} arrive en prêt (indemnité ${fee}M€).${rival ? " ⚠️ Rival historique." : ""}`);
-    }
-    setCustomForm({ name: "", cat: "MID", age: 24, value: 10, num: "", photo: null, verified: false, fromClub: "", subPos: "" });
+    setMarketPool((m) => [...m, base]);
+    setFlash(`${base.name} ajouté aux pistes.${rival ? " ⚠️ Rival historique — signature très rare en vrai." : ""}`);
+    setCustomForm({ name: "", cat: "MID", age: "", value: "", num: "", photo: null, verified: false, fromClub: "", subPos: "" });
     setSearchResults([]);
+  };
+  const loanInPiste = (piste) => {
+    const fee = Math.max(1, Math.round(piste.value * 0.15 * 10) / 10);
+    if (transferBudget < fee) { setFlash("Budget insuffisant pour ce prêt."); return; }
+    const rival = isRivalOrigin(club.name, piste.fromClub);
+    setTransferBudget((b) => Math.round((b - fee) * 10) / 10);
+    setSquad((s) => [...s, { ...piste, num: piste.num || 99, onLoan: false, loanOA: false, loanedIn: true }]);
+    setMarketPool((m) => m.filter((p) => p.id !== piste.id));
+    logTransfer(`Prêt entrant : ${piste.name} (indemnité ${fee}M€).`);
+    setFlash(`${piste.name} arrive en prêt (indemnité ${fee}M€).${rival ? " ⚠️ Rival historique." : ""}`);
   };
   const searchPlayer = async () => {
     if (searchQuery.trim().length < 3) { setFlash("Tape au moins 3 lettres."); return; }
@@ -1731,7 +1743,10 @@ function FaisTonMercato() {
               <div key={p.id} className="ft-row">
                 <div className="ft-row-num">{p.cat}</div>
                 <div><div className="ft-row-name">{p.name}</div><div className="ft-row-sub">{p.pos} · {p.age} ans</div></div>
-                <div className="ft-row-actions"><button className="ft-mini-btn ft-buy" disabled={transferBudget < p.value} onClick={() => buyPlayer(p)}>Acheter · {fmtValue(p.value)}</button></div>
+                <div className="ft-row-actions">
+                  <button className="ft-mini-btn ft-buy" disabled={transferBudget < p.value} onClick={() => buyPlayer(p)}>Acheter · {fmtValue(p.value)}</button>
+                  <button className="ft-mini-btn" disabled={transferBudget < Math.max(1, Math.round(p.value * 0.15 * 10) / 10)} onClick={() => loanInPiste(p)}>Prêter · OA {fmtValue(Math.max(1, Math.round(p.value * 0.15 * 10) / 10))}</button>
+                </div>
               </div>
             ))}
           </>)}
@@ -1764,8 +1779,7 @@ function FaisTonMercato() {
               <input placeholder="Club d'origine (optionnel)" value={customForm.fromClub} onChange={(e) => setCustomForm((f) => ({ ...f, fromClub: e.target.value }))} />
             </div>
             <div className="ft-custom-actions">
-              <button className="ft-mini-btn ft-buy" onClick={() => addCustomPlayer("achat")}>Ajouter comme piste d'achat</button>
-              <button className="ft-mini-btn" onClick={() => addCustomPlayer("pret")}>Faire venir en prêt</button>
+              <button className="ft-mini-btn ft-buy" onClick={addCustomPlayer}>Ajouter comme piste</button>
             </div>
           </div>
 
@@ -1976,7 +1990,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-skeleton { height:88px; border-radius:12px; background:linear-gradient(90deg, var(--panel), var(--panel-2), var(--panel));
     background-size:200% 100%; animation: ftPulse 1.4s ease-in-out infinite; }
 
-  .ft-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; position:relative; padding:10px 4px; border-radius:12px; overflow:hidden; }
+  .ft-head { display:flex; flex-wrap:wrap; align-items:center; gap:10px 12px; margin-bottom:14px; position:relative; padding:10px 4px; border-radius:12px; overflow:visible; }
   .ft-head::before { content:''; position:absolute; inset:0; z-index:-1;
     background: radial-gradient(ellipse 140px 90px at 15% 0%, var(--cc1) 0%, transparent 65%),
                 radial-gradient(ellipse 140px 90px at 85% 0%, var(--cc2) 0%, transparent 65%);
@@ -1987,7 +2001,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-back-btn { background:var(--panel); border:1px solid var(--line); color:var(--chalk); border-radius:8px;
     font-size:13px; padding:6px 10px; cursor:pointer; flex-shrink:0; }
   .ft-back-btn:hover { border-color:var(--gold); color:var(--gold); }
-  .ft-formation-select { margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
+  .ft-formation-select { font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
     background:var(--gold); color:var(--ink-fixed); border:1px solid var(--gold); padding:7px 10px; border-radius:8px; cursor:pointer; }
   .ft-fbtn { font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; background:var(--panel);
     border:1px solid var(--line); color:var(--muted); padding:6px 8px; border-radius:8px; cursor:pointer; transition:all .15s ease; }
@@ -2011,7 +2025,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-chip:not(.ft-chip-empty) { cursor:grab; }
   .ft-chip:not(.ft-chip-empty):active { cursor:grabbing; }
   .ft-chip:not(.ft-chip-empty):hover { transform:translate(-50%,-50%) scale(1.08); }
-  .ft-bench-row .ft-chip { position:static; transform:none; flex-shrink:0; }
+  .ft-bench-row .ft-chip { position:static; transform:none; flex-shrink:0; touch-action:pan-x; }
   .ft-bench-row .ft-chip:not(.ft-chip-empty):hover { transform:scale(1.08); }
   .ft-jersey { position:relative; width:32px; height:32px; margin:0 auto; display:flex; align-items:center; justify-content:center;
     overflow:hidden;
