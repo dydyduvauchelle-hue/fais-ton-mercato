@@ -591,6 +591,9 @@ function FaisTonMercato() {
   const [marketSearch, setMarketSearch] = useState("");
   const [customForm, setCustomForm] = useState({ name: "", cat: "", age: "", value: "", num: "", photo: null, verified: false, fromClub: "", subPos: "" });
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchClub, setSearchClub] = useState("");
+  const [searchNat, setSearchNat] = useState("");
+  const [showSearchFilters, setShowSearchFilters] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [dataSource, setDataSource] = useState("loading");
@@ -1198,7 +1201,10 @@ function FaisTonMercato() {
     if (searchQuery.trim().length < 3) { setFlash("Tape au moins 3 lettres."); return; }
     setSearching(true); setSearchResults([]);
     try {
-      const r = await fetch(`/api/search-player?q=${encodeURIComponent(searchQuery.trim())}`);
+      const params = new URLSearchParams({ q: searchQuery.trim() });
+      if (searchClub.trim()) params.set("club", searchClub.trim());
+      if (searchNat.trim()) params.set("nat", searchNat.trim());
+      const r = await fetch(`/api/search-player?${params.toString()}`);
       const data = await r.json();
       if (data.error) throw new Error(data.error);
       setSearchResults(data.results || []);
@@ -1771,16 +1777,25 @@ function FaisTonMercato() {
 
           <div className="ft-custom">
             <div className="ft-custom-title"><Icon>🔎</Icon> Chercher un vrai joueur</div>
-            <div className="ft-search" style={{ marginBottom: 8 }}>
+            <div className="ft-search" style={{ marginBottom: 6 }}>
               <input placeholder="Ex. Kilian Sildillia" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchPlayer()} />
               <button className="ft-mini-btn ft-buy" onClick={searchPlayer} disabled={searching}>{searching ? "…" : "Chercher"}</button>
             </div>
+            <div className="ft-reset-link" style={{ marginBottom: 8, display: "inline-block" }} onClick={() => setShowSearchFilters((v) => !v)}>
+              {showSearchFilters ? "− masquer les filtres" : "+ affiner (club, nationalité)"}
+            </div>
+            {showSearchFilters && (
+              <div className="ft-search-filters">
+                <input placeholder="Club (optionnel)" value={searchClub} onChange={(e) => setSearchClub(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchPlayer()} />
+                <input placeholder="Nationalité (optionnel)" value={searchNat} onChange={(e) => setSearchNat(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchPlayer()} />
+              </div>
+            )}
             {searchResults.length > 0 && (
-              <div className="ft-search-results">
+              <div className="ft-search-results ft-search-results-scroll">
                 {searchResults.map((r) => (
                   <div key={r.id} className="ft-search-result" onClick={() => pickSearchResult(r)}>
                     {r.photo ? <img className="ft-row-photo" src={r.photo} alt="" /> : <div className="ft-row-num">{POS_MAP[r.position] || r.position || "?"}</div>}
-                    <div><div className="ft-row-name">{r.flagCode && <img src={`https://flagcdn.com/w20/${r.flagCode}.png`} alt="" style={{ width: 14, marginRight: 5, verticalAlign: "middle" }} />}{r.name}</div><div className="ft-row-sub">{r.team || "club inconnu"} · {CAT_LABEL[POS_MAP[r.position] || r.position] || r.position || "poste inconnu"}{r.subPos ? ` · ${r.subPos}` : ""} · {r.age ? `${r.age} ans` : ""}</div></div>
+                    <div><div className="ft-row-name">{r.flagCode && <img src={`https://flagcdn.com/w20/${r.flagCode}.png`} alt="" style={{ width: 14, marginRight: 5, verticalAlign: "middle" }} />}{r.name}</div><div className="ft-row-sub">{r.team || "club inconnu"} · {CAT_LABEL[POS_MAP[r.position] || r.position] || r.position || "poste inconnu"}{r.subPos ? ` · ${r.subPos}` : ""} · {r.age ? `${r.age} ans` : ""}{r.nationality ? ` · ${r.nationality}` : ""}</div></div>
                   </div>
                 ))}
               </div>
@@ -2114,6 +2129,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
     border-radius:10px; padding:8px 10px; margin-bottom:10px; }
   .ft-search input { background:none; border:none; outline:none; color:var(--chalk); font-size:12px; width:100%; }
   .ft-search-results { display:flex; flex-direction:column; gap:4px; margin-bottom:8px; }
+  .ft-search-results-scroll { max-height:340px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; padding:6px; }
+  .ft-search-filters { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .ft-search-filters input { background:var(--panel-2); border:1px solid var(--line); color:var(--chalk);
+    border-radius:8px; padding:8px 10px; font-size:11.5px; font-family:'Inter',sans-serif; }
   .ft-search-result { display:flex; align-items:center; gap:10px; background:var(--panel-2); border:1px solid var(--line);
     border-radius:8px; padding:6px 8px; cursor:pointer; font-size:11px; transition:all .15s ease; }
   .ft-search-result:hover { border-color:var(--gold); }

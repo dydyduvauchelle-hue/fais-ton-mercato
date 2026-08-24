@@ -38,6 +38,8 @@ function ageFromDOB(dob) {
 module.exports = async (req, res) => {
   const TOKEN = process.env.SPORTMONKS_API_TOKEN;
   const q = (req.query.q || "").trim();
+  const clubFilter = (req.query.club || "").trim().toLowerCase();
+  const natFilter = (req.query.nat || "").trim().toLowerCase();
 
   if (!TOKEN) { res.status(500).json({ error: "Variable d'environnement SPORTMONKS_API_TOKEN manquante." }); return; }
   if (q.length < 3) { res.status(400).json({ error: "Recherche trop courte (3 caractères minimum)." }); return; }
@@ -47,8 +49,17 @@ module.exports = async (req, res) => {
     const data = await r.json();
     if (!r.ok) throw new Error(data.message || `Erreur Sportmonks (${r.status}).`);
 
-    const results = await Promise.all((data.data || []).slice(0, 5).map(async (p) => {
+    let candidates = (data.data || []).map((p) => {
       const currentTeam = (p.teams || []).find((t) => !t.end) || (p.teams || [])[0];
+      return { raw: p, currentTeam, teamName: currentTeam?.team?.name || "", natName: p.nationality?.name || "" };
+    });
+
+    if (clubFilter) candidates = candidates.filter((c) => c.teamName.toLowerCase().includes(clubFilter));
+    if (natFilter) candidates = candidates.filter((c) => c.natName.toLowerCase().includes(natFilter));
+
+    candidates = candidates.slice(0, 20);
+
+    const results = await Promise.all(candidates.map(async ({ raw: p, currentTeam }) => {
       let number = null;
       if (currentTeam?.team?.id) {
         try {
@@ -67,6 +78,7 @@ module.exports = async (req, res) => {
         subPos: subPosCode(p.detailedPosition?.name || p.position?.name),
         number,
         team: currentTeam?.team?.name || null,
+        nationality: p.nationality?.name || null,
         flagCode: (p.nationality?.iso2 || "").toLowerCase() || null,
       };
     }));
