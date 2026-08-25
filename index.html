@@ -613,6 +613,7 @@ function FaisTonMercato() {
   const [browseError, setBrowseError] = useState("");
 
   const [squad, setSquad] = useState([]);
+  const [originalSquad, setOriginalSquad] = useState([]);
   const [marketPool, setMarketPool] = useState(MARKET_POOL);
   const [transferBudget, setTransferBudget] = useState(START_TRANSFER_BUDGET);
   const [dncgSold, setDncgSold] = useState(0);
@@ -810,12 +811,14 @@ function FaisTonMercato() {
       });
       await applyOverrides(mapped);
       setSquad(mapped);
+      setOriginalSquad(mapped);
       setAssignment(assignSlots(mapped, newFormation, c.defaultLineup?.starters, c.defaultLineup?.bench));
       setDataSource("live");
     } catch (err) {
       setLiveError(err.message || "Erreur inconnue");
       const fb = FALLBACK_SQUADS[clubId] || [];
       setSquad(fb); // vrai secours, seulement si l'appel a réellement échoué
+      setOriginalSquad(fb);
       setAssignment(assignSlots(fb, newFormation, c.defaultLineup?.starters, c.defaultLineup?.bench));
       setDataSource("demo");
     }
@@ -834,7 +837,7 @@ function FaisTonMercato() {
   const saveGame = async () => {
     if (!activeKey) return;
     const isCurated = CLUBS.find((c) => c.id === activeKey);
-    const payload = { squad, formation, assignment, transferBudget, dncgSold, marketPool, logo: logosCache[activeKey]?.logo || null, coach: logosCache[activeKey]?.coach || null,
+    const payload = { squad, originalSquad, formation, assignment, transferBudget, dncgSold, marketPool, logo: logosCache[activeKey]?.logo || null, coach: logosCache[activeKey]?.coach || null,
       fixtures, table, transferLog, seasonResult, mercatoRevealed, clubMeta: isCurated ? null : dynamicClubs[activeKey] || null };
     try { localStorage.setItem(`ftm-save-${activeKey}`, JSON.stringify(payload)); } catch (e) {}
     if (session) {
@@ -857,6 +860,7 @@ function FaisTonMercato() {
     }
     const resolvedClub = CLUBS.find((c) => c.id === clubKey) || saved.clubMeta || { name: clubKey, matchNames: [] };
     setSquad(saved.squad || []);
+    setOriginalSquad(saved.originalSquad || saved.squad || []);
     setFormation(saved.formation || "4-3-3");
     setAssignment(saved.assignment || assignSlots(saved.squad || [], saved.formation || "4-3-3"));
     setSelected(null); setPrevAssignment(null);
@@ -1083,47 +1087,64 @@ function FaisTonMercato() {
     const used = squadForBudget.reduce((s, p) => s + (p.value || 0), 0);
     const fullSquad = squad.filter((p) => !p.onLoan);
     const wageBill = Math.round(fullSquad.reduce((s, p) => s + (estimateWage(p.value) || 0), 0) * 10) / 10;
-    const cap = club.valueCap;
-    const ratio = used / cap;
-    const budgetScore = ratio <= 1 ? 10 + 15 * ratio : Math.max(0, 25 - (ratio - 1) * 100);
+
+    // Discipline budgétaire : moitié valeur d'effectif, moitié masse salariale (les clubs sans
+    // encadrement salarial, comme Lens, ont automatiquement le plein sur cette moitié-là).
+    const valueRatio = used / club.valueCap;
+    const valueBudgetScore = valueRatio <= 1 ? 5 + 7.5 * valueRatio : Math.max(0, 12.5 - (valueRatio - 1) * 50);
+    let salaryBudgetScore = 12.5;
+    if (!club.noWageCap) {
+      const salRatio = wageBill / club.salaryCap;
+      salaryBudgetScore = salRatio <= 1 ? 5 + 7.5 * salRatio : Math.max(0, 12.5 - (salRatio - 1) * 50);
+    }
+    const budgetScore = valueBudgetScore + salaryBudgetScore;
+
+    // Cohérence d'effectif : âge, profondeur du banc, répartition des postes, proportion d'un
+    // seul transfert dans le budget — des jugements sur TES décisions de DS, pas sur le réalisme
+    // des données (un vrai effectif, même déséquilibré, ne doit pas être pénalisé sur la réalité).
     const withAge = filled.filter((s) => s.player.age);
     const avgAge = withAge.reduce((s, x) => s + x.player.age, 0) / (withAge.length || 1);
-    const ageScore = Math.max(0, Math.min(15, 15 - Math.max(0, Math.abs(avgAge - 25.5) - 2.5) * 3));
+    const ageScore = Math.max(0, Math.min(10, 10 - Math.max(0, Math.abs(avgAge - 25.5) - 2.5) * 2));
     const cats = ["GK", "DEF", "MID", "FWD"];
     const benchCatCount = cats.filter((c) => bench.some((p) => p.cat === c)).length;
-    const coherence = ageScore + (benchCatCount / 4) * 10;
+    const benchDepth = (benchCatCount / 4) * 8;
+    const idealRatio = { GK: 0.12, DEF: 0.32, MID: 0.32, FWD: 0.24 };
+    const nAll = fullSquad.length || 1;
+    let diversityPenalty = 0;
+    cats.forEach((c) => { diversityPenalty += Math.abs(fullSquad.filter((p) => p.cat === c).length / nAll - idealRatio[c]); });
+    const diversityScore = Math.max(0, 4 - diversityPenalty * 8);
+    const maxSingleValue = Math.max(0, ...squadForBudget.map((p) => p.value || 0));
+    const spendRatio = club.valueCap ? maxSingleValue / club.valueCap : 0;
+    const spendThreshold = club.dncg ? 0.3 : 0.5;
+    const spendPropScore = spendRatio <= spendThreshold ? 3 : Math.max(0, 3 - (spendRatio - spendThreshold) * 10);
+    const coherence = ageScore + benchDepth + diversityScore + spendPropScore;
+
     const avgValue = filled.reduce((s, x) => s + (x.player.value || 0), 0) / (filled.length || 1);
-    const quality = Math.min(25, (avgValue / (cap / 5)) * 25);
+    const quality = Math.min(25, (avgValue / (club.valueCap / 5)) * 25);
     return { coverage, budgetScore, coherence, quality, hasValues, wageBill,
       total: coverage + coherence + (hasValues ? budgetScore + quality : 0), partial: !hasValues, used, avgAge: withAge.length ? avgAge : null };
   }, [starters, bench, slots.length, club, squad]);
 
   const realism = useMemo(() => {
-    if (!club) return { verifiedScore: 0, sizeScore: 0, spendScore: 0, diversityScore: 0, rivalPenalty: 0, rivalSignings: [], total: 0, verifiedPct: 0, squadSize: 0 };
+    if (!club) return { verifiedScore: 0, sizeScore: 0, coherenceScore: 0, rivalPenalty: 0, rivalSignings: [], total: 0, verifiedPct: 0, squadSize: 0 };
     const all = squad.filter((p) => !p.onLoan);
     const n = all.length || 1;
+
+    // Le réalisme ne mesure QUE si l'effectif est crédible/réel — pas si sa forme est "idéale"
+    // (ça, c'est le boulot du score mercato). Un vrai effectif actuel doit pouvoir atteindre 100%.
     const verifiedPct = all.filter((p) => p.verified).length / n;
-    const verifiedScore = verifiedPct * 40;
+    const verifiedScore = verifiedPct * 65;
 
-    const sizeScore = Math.max(0, 20 - Math.max(0, Math.abs(all.length - 22) - 4) * 2.5);
-
-    const maxSingleValue = Math.max(0, ...all.map((p) => p.value || 0));
-    const spendRatio = maxSingleValue / club.valueCap;
-    const spendThreshold = club.dncg ? 0.15 : 0.35; // un club sous DNCG ne peut pas claquer 50M sur un seul joueur comme Paris ou Madrid
-    const spendScore = spendRatio <= spendThreshold ? 20 : Math.max(0, 20 - (spendRatio - spendThreshold) * 60);
-
-    const cats = ["GK", "DEF", "MID", "FWD"];
-    const idealRatio = { GK: 0.12, DEF: 0.32, MID: 0.32, FWD: 0.24 };
-    let diversityPenalty = 0;
-    cats.forEach((c) => { diversityPenalty += Math.abs(all.filter((p) => p.cat === c).length / n - idealRatio[c]); });
-    const diversityScore = Math.max(0, 20 - diversityPenalty * 40);
+    const size = all.length;
+    const sizeScore = size >= 16 && size <= 30 ? 20 : Math.max(0, 20 - Math.abs(size < 16 ? 16 - size : size - 30) * 3);
 
     const rivalSignings = all.filter((p) => isRivalOrigin(club.name, p.fromClub));
-    const rivalPenalty = rivalSignings.length * 15;
+    const rivalPenalty = Math.min(15, rivalSignings.length * 15);
+    const coherenceScore = 15 - rivalPenalty;
 
-    const rawTotal = verifiedScore + sizeScore + spendScore + diversityScore - rivalPenalty;
-    return { verifiedScore, sizeScore, spendScore, diversityScore, rivalPenalty, rivalSignings,
-      total: Math.max(0, rawTotal), verifiedPct, squadSize: all.length };
+    const rawTotal = verifiedScore + sizeScore + coherenceScore;
+    return { verifiedScore, sizeScore, coherenceScore, rivalPenalty, rivalSignings,
+      total: Math.max(0, Math.min(100, rawTotal)), verifiedPct, squadSize: n };
   }, [squad, club]);
 
   const buyPlayer = (p) => {
@@ -1322,6 +1343,18 @@ function FaisTonMercato() {
   const globalAvg = (score.total + realism.total) / 2;
   const dsTitle = globalAvg >= 85 ? "Directeur Sportif de légende 🏆" : globalAvg >= 70 ? "Direction sportive solide 👔" : globalAvg >= 50 ? "Mercato correct, peut mieux faire 📋" : "Mercato chaotique 🔥";
 
+  const mercatoMoves = useMemo(() => {
+    const origIds = new Set(originalSquad.map((p) => p.id));
+    const currIds = new Set(squad.map((p) => p.id));
+    const arrivals = squad.filter((p) => !origIds.has(p.id) && !p.onLoan);
+    const departures = originalSquad.filter((p) => !currIds.has(p.id));
+    const spent = arrivals.reduce((s, p) => s + (p.value || 0), 0);
+    const recovered = departures.reduce((s, p) => s + (p.value || 0), 0);
+    return { arrivals, departures, spent: Math.round(spent * 10) / 10, recovered: Math.round(recovered * 10) / 10 };
+  }, [squad, originalSquad]);
+
+  const [cardStyle, setCardStyle] = useState("dark");
+
   const trophies = useMemo(() => {
     if (!club) return [];
     const all = squad.filter((p) => !p.onLoan);
@@ -1332,7 +1365,7 @@ function FaisTonMercato() {
     if (club.dncg && score.hasValues && score.used <= club.valueCap * 0.9) list.push({ icon: "💰", label: "Petit budget, grand cœur", desc: "Effectif construit bien en dessous du plafond malgré la DNCG" });
     if (realism.rivalPenalty === 0) list.push({ icon: "🤝", label: "Aucun rival signé", desc: "Pas de transfert improbable avec un rival historique" });
     if (realism.verifiedPct === 1 && all.length > 0) list.push({ icon: "✅", label: "100% vérifié", desc: "Tout l'effectif vient de vraies données, aucun joueur fictif" });
-    if (realism.diversityScore >= 18) list.push({ icon: "⚖️", label: "Effectif équilibré", desc: "Répartition des postes proche d'un vrai groupe pro" });
+    if (score.coherence >= 22) list.push({ icon: "⚖️", label: "Effectif équilibré", desc: "Âge, répartition des postes et profondeur de banc bien gérés" });
     if (score.coverage >= 25) list.push({ icon: "🎯", label: "Postes couverts à 100%", desc: "Les 11 titulaires jouent tous à leur poste" });
     if (dncgDone && club.dncg) list.push({ icon: "🧾", label: "DNCG respectée", desc: "Objectif de cession de 80M€ atteint" });
     return list;
@@ -1522,7 +1555,7 @@ function FaisTonMercato() {
                 const c = CLUBS.find((x) => x.id === s.club_key);
                 return (
                   <div key={s.club_key} className="ft-row">
-                    <div><div className="ft-row-name">{c ? c.name : (s.data?.clubMeta?.name || s.club_key)}</div><div className="ft-row-sub">Mise à jour : {new Date(s.updated_at).toLocaleDateString()}</div></div>
+                    <div><div className="ft-row-name">{(c ? c.name : (s.data?.clubMeta?.name || s.club_key))}{session?.user?.user_metadata?.full_name ? ` — ${session.user.user_metadata.full_name}` : ""}</div><div className="ft-row-sub">Mise à jour : {new Date(s.updated_at).toLocaleDateString()}</div></div>
                     <div className="ft-row-actions">
                       <button className="ft-mini-btn ft-buy" onClick={() => openSavedGame(s.club_key)}>Ouvrir</button>
                       <button className="ft-mini-btn ft-sell" onClick={() => deleteSave(s.club_key)}>Supprimer</button>
@@ -1757,10 +1790,9 @@ function FaisTonMercato() {
                 <div className="ft-gauge" style={{ "--pct": Math.round(realism.total) }}><div className="ft-gauge-inner"><div className="ft-gauge-num">{Math.round(realism.total)}</div><div className="ft-gauge-sub">/100</div></div></div>
                 <div><div className="ft-score-title">Cohérence à la réalité</div><div className="ft-score-desc">{realism.squadSize} joueurs · {Math.round(realism.verifiedPct * 100)}% vérifiés</div></div>
               </div>
-              <Bar label="Joueurs réels vérifiés" value={realism.verifiedScore} max={40} />
+              <Bar label="Joueurs réels vérifiés" value={realism.verifiedScore} max={65} />
               <Bar label="Taille d'effectif plausible" value={realism.sizeScore} max={20} />
-              <Bar label="Aucun transfert délirant" value={realism.spendScore} max={20} />
-              <Bar label="Répartition des postes" value={realism.diversityScore} max={20} />
+              <Bar label="Cohérence des transferts (pas de rival historique)" value={realism.coherenceScore} max={15} />
               {realism.rivalPenalty > 0 && <div className="ft-row-sub" style={{ color: "var(--coral)" }}>⚠️ -{realism.rivalPenalty} pts : {realism.rivalSignings.map((p) => p.name).join(", ")} vien{realism.rivalSignings.length > 1 ? "nent" : "t"} d'un rival historique (rarissime en vrai).</div>}
             </div>
 
@@ -1775,29 +1807,78 @@ function FaisTonMercato() {
               </div>
             )}
 
-            <div id="share-card" className="ft-share-card">
-              <div className="ft-share-head">
-                <ClubCrest club={club} size={40} logoUrl={logosCache[activeKey]?.logo} />
-                <div>
-                  <div className="ft-share-club">{club.name}</div>
-                  <div className="ft-share-sub">Mercato 2026-2027 · {formation}</div>
-                </div>
-              </div>
-              <div className="ft-share-title">{dsTitle}</div>
-              <div className="ft-share-scores">
-                <div className="ft-share-score-box"><div className="ft-share-score-num">{Math.round(score.total)}</div><div className="ft-share-score-label">Note mercato</div></div>
-                <div className="ft-share-score-box"><div className="ft-share-score-num">{Math.round(realism.total)}</div><div className="ft-share-score-label">Réalisme</div></div>
-              </div>
-              <div className="ft-share-xi">
-                {starters.filter((s) => s.player).map(({ player }) => (
-                  <div key={player.id} className="ft-share-player">
-                    <span className="ft-share-num" style={{ background: club.c1, color: club.c2 }}>{player.num}</span>
-                    {shortName(player.name)}
-                  </div>
-                ))}
-              </div>
-              <div className="ft-share-footer">⚽ Fais ton Mercato</div>
+            <div className="ft-card-style-picker">
+              <button className={`ft-mini-btn ${cardStyle === "dark" ? "ft-buy" : ""}`} onClick={() => setCardStyle("dark")}>🌙 Sombre</button>
+              <button className={`ft-mini-btn ${cardStyle === "light" ? "ft-buy" : ""}`} onClick={() => setCardStyle("light")}>☀️ Claire</button>
+              <button className={`ft-mini-btn ${cardStyle === "xi" ? "ft-buy" : ""}`} onClick={() => setCardStyle("xi")}>👕 Onze + doublures</button>
             </div>
+
+            {cardStyle === "xi" ? (
+              <div id="share-card" className="ft-share-card ft-share-xi-only">
+                <div className="ft-share-head">
+                  <ClubCrest club={club} size={40} logoUrl={logosCache[activeKey]?.logo} />
+                  <div>
+                    <div className="ft-share-club">{club.name}</div>
+                    <div className="ft-share-sub">Mon onze · {formation}</div>
+                  </div>
+                </div>
+                <div className="ft-share-xi ft-share-xi-grid">
+                  {starters.filter((s) => s.player).map(({ player }) => (
+                    <div key={player.id} className="ft-share-player ft-share-player-tall">
+                      <span className="ft-share-num" style={{ background: club.c1, color: club.c2 }}>{player.num}</span>
+                      <div>
+                        <div>{shortName(player.name)}</div>
+                        {understudies[player.id] && (() => {
+                          const u = [...bench, ...reserve].find((b) => b.id === understudies[player.id]);
+                          return u ? <div className="ft-share-understudy">Doublure : {shortName(u.name)}</div> : null;
+                        })()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="ft-share-footer">⚽ Fais ton Mercato</div>
+              </div>
+            ) : (
+              <div id="share-card" className={`ft-share-card ${cardStyle === "light" ? "ft-share-light" : ""}`}>
+                <div className="ft-share-head">
+                  <ClubCrest club={club} size={40} logoUrl={logosCache[activeKey]?.logo} />
+                  <div>
+                    <div className="ft-share-club">{club.name}</div>
+                    <div className="ft-share-sub">Mercato 2026-2027 · {formation}</div>
+                  </div>
+                </div>
+                <div className="ft-share-title">{dsTitle}</div>
+                <div className="ft-share-scores">
+                  <div className="ft-share-score-box"><div className="ft-share-score-num">{Math.round(score.total)}</div><div className="ft-share-score-label">Note mercato</div></div>
+                  <div className="ft-share-score-box"><div className="ft-share-score-num">{Math.round(realism.total)}</div><div className="ft-share-score-label">Réalisme</div></div>
+                </div>
+                {(mercatoMoves.arrivals.length > 0 || mercatoMoves.departures.length > 0) && (
+                  <div className="ft-share-moves">
+                    {mercatoMoves.arrivals.length > 0 && (
+                      <div className="ft-share-move-col">
+                        <div className="ft-share-move-title">↗️ Arrivées ({mercatoMoves.arrivals.length}) · {fmtValue(mercatoMoves.spent)}</div>
+                        {mercatoMoves.arrivals.slice(0, 6).map((p) => <div key={p.id} className="ft-share-move-item">{shortName(p.name)}</div>)}
+                      </div>
+                    )}
+                    {mercatoMoves.departures.length > 0 && (
+                      <div className="ft-share-move-col">
+                        <div className="ft-share-move-title">↘️ Départs ({mercatoMoves.departures.length}) · {fmtValue(mercatoMoves.recovered)}</div>
+                        {mercatoMoves.departures.slice(0, 6).map((p) => <div key={p.id} className="ft-share-move-item">{shortName(p.name)}</div>)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="ft-share-xi">
+                  {starters.filter((s) => s.player).map(({ player }) => (
+                    <div key={player.id} className="ft-share-player">
+                      <span className="ft-share-num" style={{ background: club.c1, color: club.c2 }}>{player.num}</span>
+                      {shortName(player.name)}
+                    </div>
+                  ))}
+                </div>
+                <div className="ft-share-footer">⚽ Fais ton Mercato</div>
+              </div>
+            )}
             <button className="ft-mini-btn ft-buy" style={{ width: "100%", padding: "10px 0" }} onClick={downloadCard}>📸 Télécharger ma carte</button>
             <button className="ft-mini-btn" style={{ width: "100%", padding: "10px 0", marginTop: 6 }} onClick={loadLeaderboard}>🏅 Voir le classement {club.name}</button>
 
@@ -2281,6 +2362,24 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-share-num { width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;
     font-family:'IBM Plex Mono',monospace; font-size:8px; font-weight:700; flex-shrink:0; }
   .ft-share-footer { text-align:center; font-family:'Anton',sans-serif; font-size:11px; color:#9FB0A6; letter-spacing:0.05em; }
+
+  .ft-card-style-picker { display:flex; gap:6px; margin:14px 0 4px; }
+  .ft-card-style-picker button { flex:1; }
+
+  .ft-share-light { background:linear-gradient(160deg, #F7F5EF 0%, #FFFFFF 100%) !important; border-color:rgba(10,14,18,0.12) !important; color:#0A0E12 !important; }
+  .ft-share-light .ft-share-sub, .ft-share-light .ft-share-score-label, .ft-share-light .ft-share-footer, .ft-share-light .ft-share-move-title { color:#5B6B65 !important; }
+  .ft-share-light .ft-share-score-box, .ft-share-light .ft-share-player { background:#EFEEE7 !important; color:#0A0E12 !important; }
+  .ft-share-light .ft-share-score-num { color:#0A0E12 !important; }
+
+  .ft-share-moves { display:flex; gap:10px; margin-bottom:14px; }
+  .ft-share-move-col { flex:1; background:#182420; border:1px solid rgba(244,247,241,0.14); border-radius:10px; padding:8px 10px; }
+  .ft-share-light .ft-share-move-col { background:#EFEEE7 !important; border-color:rgba(10,14,18,0.1) !important; }
+  .ft-share-move-title { font-family:'IBM Plex Mono',monospace; font-size:8px; color:#9FB0A6; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:5px; }
+  .ft-share-move-item { font-size:10px; line-height:1.6; }
+
+  .ft-share-xi-only .ft-share-xi-grid { grid-template-columns:1fr 1fr; }
+  .ft-share-player-tall { align-items:flex-start !important; padding:8px !important; }
+  .ft-share-understudy { font-size:8.5px; color:#9FB0A6; margin-top:2px; }
   .ft-trophies { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
   .ft-trophy { display:flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--gold); border-radius:20px;
     padding:6px 12px 6px 8px; font-size:10.5px; font-weight:600; cursor:help; }
