@@ -1058,6 +1058,7 @@ function FaisTonMercato() {
     setFlash("Dernier échange annulé.");
   };
   const benchScrollRef = React.useRef(null);
+  const [understudies, setUnderstudies] = useState({});
   const handleSelect = (id) => {
     const el = benchScrollRef.current;
     const savedScroll = el ? el.scrollLeft : null;
@@ -1290,7 +1291,7 @@ function FaisTonMercato() {
       else if (slot) setAssignment((prev) => ({ ...prev, [draggedId]: slot.id }));
     };
     return (
-      <button className={`ft-chip ft-chip-${size} ${isSelected || isTouchDragged ? "ft-chip-sel" : ""} ${isEmpty ? "ft-chip-empty" : ""} ${isTouchDragged ? "ft-chip-dragging" : ""}`}
+      <button className={`ft-chip ft-chip-${size} ${isSelected ? "ft-chip-sel" : ""} ${isEmpty ? "ft-chip-empty" : ""} ${isTouchDragged ? "ft-chip-dragging" : ""}`}
         onClick={() => player && handleSelect(player.id)}
         draggable={!isEmpty}
         onDragStart={(e) => player && e.dataTransfer.setData("text/plain", player.id)}
@@ -1694,7 +1695,23 @@ function FaisTonMercato() {
           <div className="ft-squad-left">
           <div className="ft-pitch">
             {starters.map(({ slot, player }) => (
-              <div key={slot.id} style={{ position: "absolute", top: `${slot.top}%`, left: `${slot.left}%` }}><Chip player={player} slot={slot} /></div>
+              <React.Fragment key={slot.id}>
+                <div style={{ position: "absolute", top: `${slot.top}%`, left: `${slot.left}%` }}><Chip player={player} slot={slot} /></div>
+                {player && (() => {
+                  const options = [...bench, ...reserve].filter((b) => b.cat === player.cat);
+                  return (
+                    <select
+                      className="ft-understudy-select"
+                      style={{ top: `${slot.top + 8}%`, left: `${slot.left}%` }}
+                      value={understudies[player.id] || ""}
+                      onChange={(e) => setUnderstudies((u) => ({ ...u, [player.id]: e.target.value }))}
+                      onClick={(e) => e.stopPropagation()}>
+                      <option value="">+ doublure</option>
+                      {options.map((b) => <option key={b.id} value={b.id}>{shortName(b.name)}</option>)}
+                    </select>
+                  );
+                })()}
+              </React.Fragment>
             ))}
           </div>
           <div className="ft-hint">
@@ -2138,6 +2155,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-jersey-textured { background-image: radial-gradient(var(--tex) 1px, transparent 1.4px) !important;
     background-size: 5px 5px; background-position: 0 0, 2px 2px; }
   .ft-jersey-collar { position:absolute; top:0; left:38%; width:24%; height:16%; clip-path:polygon(0 0,100% 0,60% 100%,40% 100%); }
+  .ft-understudy-select { position:absolute; transform:translateX(-50%); max-width:78px; font-family:'IBM Plex Mono',monospace;
+    font-size:8px; background:rgba(10,14,18,0.55); color:var(--muted); border:1px solid var(--line); border-radius:5px;
+    padding:1px 3px; text-align:center; z-index:2; }
   .ft-jersey-num { position:relative; z-index:2; font-family:'Anton',sans-serif; font-size:12px; color:#0B2545; }
   .ft-jersey-empty { background:transparent; border:1.5px dashed rgba(244,247,241,0.4); }
   .ft-jersey-empty .ft-jersey-num { color:var(--muted); }
