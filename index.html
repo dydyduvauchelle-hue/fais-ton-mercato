@@ -1016,7 +1016,6 @@ function FaisTonMercato() {
     }
     if (drag.moved) {
       e.preventDefault();
-      autoScrollByY(t.clientY);
       setTouchGhost({ x: t.clientX, y: t.clientY, player: drag.player });
     }
   };
@@ -1058,11 +1057,14 @@ function FaisTonMercato() {
     setPrevAssignment(null);
     setFlash("Dernier échange annulé.");
   };
+  const benchScrollRef = React.useRef(null);
   const handleSelect = (id) => {
-    if (!selected) return setSelected(id);
-    if (selected === id) return setSelected(null);
-    swapPlayers(selected, id);
-    setSelected(null);
+    const el = benchScrollRef.current;
+    const savedScroll = el ? el.scrollLeft : null;
+    if (!selected) setSelected(id);
+    else if (selected === id) setSelected(null);
+    else { swapPlayers(selected, id); setSelected(null); }
+    if (el && savedScroll != null) requestAnimationFrame(() => { el.scrollLeft = savedScroll; });
   };
 
   const starters = useMemo(() => slots.map((slot) => ({ slot, player: squad.find((p) => assignment[p.id] === slot.id) || null })), [assignment, formation, squad]);
@@ -1702,7 +1704,7 @@ function FaisTonMercato() {
           </div>
           <div className="ft-squad-right">
           <div className="ft-section-label"><span>Banc</span><span>{bench.length}/{BENCH_SIZE}</span></div>
-          <div className="ft-bench-row">{bench.map((p) => <Chip key={p.id} player={p} size="sm" />)}</div>
+          <div className="ft-bench-row" ref={benchScrollRef}>{bench.map((p) => <Chip key={p.id} player={p} size="sm" />)}</div>
           <div className="ft-section-label"><span>Réserve</span></div>
           <div className="ft-reserve">
             {reserve.map((p) => (
@@ -2155,7 +2157,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-res-pill.ft-chip-sel { outline:2px solid var(--chalk); }
   .ft-chip-dragging { opacity:0.3; }
   .ft-touch-ghost { position:fixed; transform:translate(-50%,-55%) scale(1.25); pointer-events:none; z-index:999;
-    filter:drop-shadow(0 8px 18px rgba(0,0,0,0.55)); transition:none; }
+    will-change:transform; filter:drop-shadow(0 8px 18px rgba(0,0,0,0.55)); transition:none; }
   .ft-res-num { width:18px; height:18px; border-radius:50%; background:#0B2545; color:#fff; display:flex; align-items:center;
     justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:700; }
   .ft-res-pos { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); margin-left:2px; }
