@@ -780,7 +780,8 @@ function FaisTonMercato() {
     if (!c) return;
     setDataSource("loading");
     setSquad([]);
-    setFormation(c.defaultLineup?.formation || "4-3-3");
+    const newFormation = c.defaultLineup?.formation || "4-3-3";
+    setFormation(newFormation);
     setTransferBudget(c.startBudget ?? START_TRANSFER_BUDGET);
     setDncgSold(c.startDncgSold || 0);
     setMarketPool([]);
@@ -789,6 +790,7 @@ function FaisTonMercato() {
     setTransferLog([]);
     setSeasonResult(null);
     setMercatoRevealed(false);
+    setSelected(null); setPrevAssignment(null);
     try {
       const url = c.apiTeamId ? `/api/squad?teamId=${c.apiTeamId}` : `/api/squad?team=${encodeURIComponent(c.apiQuery)}`;
       const r = await fetch(url);
@@ -808,10 +810,13 @@ function FaisTonMercato() {
       });
       await applyOverrides(mapped);
       setSquad(mapped);
+      setAssignment(assignSlots(mapped, newFormation, c.defaultLineup?.starters, c.defaultLineup?.bench));
       setDataSource("live");
     } catch (err) {
       setLiveError(err.message || "Erreur inconnue");
-      setSquad(FALLBACK_SQUADS[clubId] || []); // vrai secours, seulement si l'appel a réellement échoué
+      const fb = FALLBACK_SQUADS[clubId] || [];
+      setSquad(fb); // vrai secours, seulement si l'appel a réellement échoué
+      setAssignment(assignSlots(fb, newFormation, c.defaultLineup?.starters, c.defaultLineup?.bench));
       setDataSource("demo");
     }
   };
@@ -829,7 +834,7 @@ function FaisTonMercato() {
   const saveGame = async () => {
     if (!activeKey) return;
     const isCurated = CLUBS.find((c) => c.id === activeKey);
-    const payload = { squad, formation, transferBudget, dncgSold, marketPool, logo: logosCache[activeKey]?.logo || null, coach: logosCache[activeKey]?.coach || null,
+    const payload = { squad, formation, assignment, transferBudget, dncgSold, marketPool, logo: logosCache[activeKey]?.logo || null, coach: logosCache[activeKey]?.coach || null,
       fixtures, table, transferLog, seasonResult, mercatoRevealed, clubMeta: isCurated ? null : dynamicClubs[activeKey] || null };
     try { localStorage.setItem(`ftm-save-${activeKey}`, JSON.stringify(payload)); } catch (e) {}
     if (session) {
@@ -853,6 +858,8 @@ function FaisTonMercato() {
     const resolvedClub = CLUBS.find((c) => c.id === clubKey) || saved.clubMeta || { name: clubKey, matchNames: [] };
     setSquad(saved.squad || []);
     setFormation(saved.formation || "4-3-3");
+    setAssignment(saved.assignment || assignSlots(saved.squad || [], saved.formation || "4-3-3"));
+    setSelected(null); setPrevAssignment(null);
     setTransferBudget(saved.transferBudget ?? START_TRANSFER_BUDGET);
     setDncgSold(saved.dncgSold ?? 0);
     setMarketPool(saved.marketPool || MARKET_POOL);
@@ -965,7 +972,7 @@ function FaisTonMercato() {
     const preferredBench = matches ? club.defaultLineup.bench : null;
     setAssignment(assignSlots(squad, formation, preferred, preferredBench));
     setSelected(null); setPrevAssignment(null);
-  }, [formation, squad, club]);
+  }, [formation, club]);
 
   const slots = FORMATIONS[formation];
   const autoScrollByY = (y) => {
@@ -985,9 +992,9 @@ function FaisTonMercato() {
   const touchDragRef = React.useRef({ id: null, player: null, moved: false, startX: 0, startY: 0 });
   const [touchDragId, setTouchDragId] = useState(null);
   const [touchGhost, setTouchGhost] = useState(null);
-  const onChipTouchStart = (player) => (e) => {
+  const onChipTouchStart = (player, isBench) => (e) => {
     const t = e.touches[0];
-    touchDragRef.current = { id: player.id, player, moved: false, startX: t.clientX, startY: t.clientY };
+    touchDragRef.current = { id: player.id, player, isBench: !!isBench, moved: false, startX: t.clientX, startY: t.clientY };
   };
   const onChipTouchMove = (e) => {
     const drag = touchDragRef.current;
@@ -995,15 +1002,16 @@ function FaisTonMercato() {
     const t = e.touches[0];
     const dx = t.clientX - drag.startX, dy = t.clientY - drag.startY;
     if (!drag.moved) {
-      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-        if (Math.abs(dy) >= Math.abs(dx) * 0.7) {
-          drag.moved = true;
-          setTouchDragId(drag.id);
-        } else {
-          // Mouvement surtout horizontal : probablement un défilement du banc, pas un glisser-déposer.
-          touchDragRef.current = { id: null, player: null, moved: false, startX: 0, startY: 0 };
+      const dist = Math.max(Math.abs(dx), Math.abs(dy));
+      if (dist > 12) {
+        if (drag.isBench && Math.abs(dx) > Math.abs(dy) * 1.4) {
+          // Sur le banc uniquement, et seulement si le geste est clairement horizontal :
+          // on laisse faire le défilement natif plutôt que de démarrer un glisser-déposer.
+          touchDragRef.current = { id: null, player: null, isBench: false, moved: false, startX: 0, startY: 0 };
           return;
         }
+        drag.moved = true;
+        setTouchDragId(drag.id);
       }
     }
     if (drag.moved) {
@@ -1027,7 +1035,7 @@ function FaisTonMercato() {
         else if (ts) setAssignment((prev) => ({ ...prev, [drag.id]: ts }));
       }
     }
-    touchDragRef.current = { id: null, player: null, moved: false, startX: 0, startY: 0 };
+    touchDragRef.current = { id: null, player: null, isBench: false, moved: false, startX: 0, startY: 0 };
     setTouchDragId(null);
     setTouchGhost(null);
   };
@@ -1119,6 +1127,7 @@ function FaisTonMercato() {
     if (transferBudget < p.value) return;
     setTransferBudget((b) => Math.round((b - p.value) * 10) / 10);
     setSquad((s) => [...s, { ...p, verified: true, onLoan: false, loanOA: false, loanedIn: false }]);
+    setAssignment((a) => ({ ...a, [p.id]: "RESERVE" }));
     setMarketPool((m) => m.filter((x) => x.id !== p.id));
     logTransfer(`Achat : ${p.name} (${fmtValue(p.value)}).`);
     setFlash(`${p.name} rejoint l'effectif.`);
@@ -1128,6 +1137,7 @@ function FaisTonMercato() {
     setTransferBudget((b) => Math.round((b + fee) * 1000) / 1000);
     if (club.dncg) setDncgSold((d) => Math.round((d + fee) * 1000) / 1000);
     setSquad((s) => s.filter((x) => x.id !== p.id));
+    setAssignment((a) => { const next = { ...a }; delete next[p.id]; return next; });
     logTransfer(`Vente : ${p.name}${fee ? ` (${fmtValue(fee)})` : ""}.`);
     setFlash(`${p.name} vendu${fee ? ` pour ${fmtValue(fee)}` : ""}.`);
   };
@@ -1224,6 +1234,7 @@ function FaisTonMercato() {
   const loanInSimple = (piste) => {
     const rival = isRivalOrigin(club.name, piste.fromClub);
     setSquad((s) => [...s, { ...piste, num: piste.num || 99, onLoan: false, loanOA: false, loanedIn: true }]);
+    setAssignment((a) => ({ ...a, [piste.id]: "RESERVE" }));
     setMarketPool((m) => m.filter((p) => p.id !== piste.id));
     logTransfer(`Prêt entrant : ${piste.name} (sans option d'achat).`);
     setFlash(`${piste.name} arrive en prêt.${rival ? " ⚠️ Rival historique." : ""}`);
@@ -1232,6 +1243,7 @@ function FaisTonMercato() {
     const oa = calcOA(piste.value, piste.age);
     const rival = isRivalOrigin(club.name, piste.fromClub);
     setSquad((s) => [...s, { ...piste, num: piste.num || 99, onLoan: false, loanOA: true, oaValue: oa, loanedIn: true }]);
+    setAssignment((a) => ({ ...a, [piste.id]: "RESERVE" }));
     setMarketPool((m) => m.filter((p) => p.id !== piste.id));
     logTransfer(`Prêt entrant : ${piste.name} (option d'achat ${fmtValue(oa)}).`);
     setFlash(`${piste.name} arrive en prêt avec option d'achat à ${fmtValue(oa)}.${rival ? " ⚠️ Rival historique." : ""}`);
@@ -1284,7 +1296,7 @@ function FaisTonMercato() {
         onDrop={onDropHere}
         data-player-id={player ? player.id : undefined}
         data-slot-id={!player && slot ? slot.id : undefined}
-        onTouchStart={player ? onChipTouchStart(player) : undefined}
+        onTouchStart={player ? onChipTouchStart(player, size === "sm") : undefined}
         onTouchMove={player ? onChipTouchMove : undefined}
         onTouchEnd={player ? onChipTouchEnd : undefined}>
         <Jersey club={club} num={player?.num} empty={isEmpty} mode={kitMode} />
@@ -2114,7 +2126,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-bench-row .ft-chip { position:static; transform:none; flex-shrink:0; touch-action:pan-x; }
   .ft-bench-row .ft-chip:not(.ft-chip-empty):hover { transform:scale(1.08); }
   .ft-jersey { position:relative; width:32px; height:32px; margin:0 auto; display:flex; align-items:center; justify-content:center;
-    overflow:hidden;
+    overflow:hidden; transition:transform .15s ease, filter .15s ease;
     clip-path:polygon(22% 0%,38% 0%,50% 14%,62% 0%,78% 0%,100% 22%,84% 36%,84% 100%,16% 100%,16% 36%,0% 22%);
     box-shadow:0 2px 6px rgba(0,0,0,0.35); }
   .ft-jersey-sleeve { position:absolute; top:0; width:38%; height:44%; }
@@ -2127,7 +2139,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-jersey-num { position:relative; z-index:2; font-family:'Anton',sans-serif; font-size:12px; color:#0B2545; }
   .ft-jersey-empty { background:transparent; border:1.5px dashed rgba(244,247,241,0.4); }
   .ft-jersey-empty .ft-jersey-num { color:var(--muted); }
-  .ft-chip-sel .ft-jersey { outline:2px solid var(--chalk); outline-offset:2px; }
+  .ft-chip-sel .ft-jersey { transform:scale(1.18); filter:drop-shadow(0 0 5px var(--gold)) drop-shadow(0 0 9px var(--gold)); }
   .ft-chip-name { font-size:9.5px; margin-top:3px; font-weight:600; text-align:center; }
   .ft-chip-tag { font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); }
 
