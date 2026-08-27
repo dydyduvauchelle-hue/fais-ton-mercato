@@ -223,6 +223,7 @@ const MARKET_POOL = [
 ];
 
 const CAT_LABEL = { GK: "Gardien", DEF: "Défenseur", MID: "Milieu", FWD: "Attaquant" };
+const CAT_SHORT = { GK: "G", DEF: "DEF", MID: "MIL", FWD: "ATT" };
 // Sportmonks ne traduit pas encore en français (confirmé : le français est
 // "en préparation" chez eux) — on traduit nous-mêmes les noms de pays les
 // plus courants en football pour une liste déroulante en français.
@@ -474,8 +475,7 @@ function subPosFromLabel(label) {
   if (l.includes("avant-centre") || l.includes("attaquant")) return "BU";
   return "";
 }
-function getSubPos(p) { return p.subPos || subPosFromLabel(p.pos) || ""; }
-function posLine(p) { const sp = getSubPos(p); return sp ? `${CAT_LABEL[p.cat] || p.cat} · ${sp}` : (CAT_LABEL[p.cat] || p.cat); }
+function posLine(p) { return CAT_LABEL[p.cat] || p.cat; }
 
 function estimateValue(age, cat, num) {
   const base = { GK: 8, DEF: 12, MID: 15, FWD: 18 }[cat] || 10;
@@ -1312,7 +1312,8 @@ function FaisTonMercato() {
       else if (slot) setAssignment((prev) => ({ ...prev, [draggedId]: slot.id }));
     };
     return (
-      <button className={`ft-chip ft-chip-${size} ${isSelected ? "ft-chip-sel" : ""} ${isEmpty ? "ft-chip-empty" : ""} ${isTouchDragged ? "ft-chip-dragging" : ""}`}
+      <div className={`ft-chip ft-chip-${size} ${isSelected ? "ft-chip-sel" : ""} ${isEmpty ? "ft-chip-empty" : ""} ${isTouchDragged ? "ft-chip-dragging" : ""}`}
+        role="button" tabIndex={isEmpty ? -1 : 0}
         onClick={() => player && handleSelect(player.id)}
         draggable={!isEmpty}
         onDragStart={(e) => player && e.dataTransfer.setData("text/plain", player.id)}
@@ -1325,8 +1326,8 @@ function FaisTonMercato() {
         onTouchEnd={player ? onChipTouchEnd : undefined}>
         <Jersey club={club} num={player?.num} empty={isEmpty} mode={kitMode} />
         <span className="ft-chip-name">{player ? shortName(player.name) : CAT_LABEL[slot.cat]}</span>
-        {player && <span className="ft-chip-tag">{getSubPos(player) || player.cat}{size !== "sm" && ` · ${fmtValue(player.value)}`}</span>}
-      </button>
+        {player && <span className="ft-chip-tag">{CAT_SHORT[player.cat] || player.cat}{size !== "sm" && ` · ${fmtValue(player.value)}`}</span>}
+      </div>
     );
   };
   const Bar = ({ label, value, max = 25 }) => (
@@ -1731,16 +1732,21 @@ function FaisTonMercato() {
               <React.Fragment key={slot.id}>
                 <div style={{ position: "absolute", top: `${slot.top}%`, left: `${slot.left}%` }}><Chip player={player} slot={slot} /></div>
                 {player && (() => {
-                  const options = [...bench, ...reserve].filter((b) => b.cat === player.cat);
+                  const pool = [...bench, ...reserve];
+                  const groups = ["GK", "DEF", "MID", "FWD"].map((c) => ({ cat: c, players: pool.filter((b) => b.cat === c) })).filter((g) => g.players.length > 0);
                   return (
                     <select
                       className="ft-understudy-select"
-                      style={{ top: `${slot.top + 8}%`, left: `${slot.left}%` }}
+                      style={{ top: `${slot.top + 5.5}%`, left: `${slot.left}%` }}
                       value={understudies[player.id] || ""}
                       onChange={(e) => setUnderstudies((u) => ({ ...u, [player.id]: e.target.value }))}
                       onClick={(e) => e.stopPropagation()}>
                       <option value="">+ doublure</option>
-                      {options.map((b) => <option key={b.id} value={b.id}>{shortName(b.name)}</option>)}
+                      {groups.map((g) => (
+                        <optgroup key={g.cat} label={CAT_LABEL[g.cat]}>
+                          {g.players.map((b) => <option key={b.id} value={b.id}>{shortName(b.name)}</option>)}
+                        </optgroup>
+                      ))}
                     </select>
                   );
                 })()}
@@ -1764,7 +1770,7 @@ function FaisTonMercato() {
                 onDrop={(e) => { e.preventDefault(); swapPlayers(e.dataTransfer.getData("text/plain"), p.id); }}
                 data-player-id={p.id}
                 onTouchStart={onChipTouchStart(p)} onTouchMove={onChipTouchMove} onTouchEnd={onChipTouchEnd}>
-                <span className="ft-res-num">{p.num}</span>{shortName(p.name)}<span className="ft-res-pos">{getSubPos(p) || p.cat}</span>
+                <span className="ft-res-num">{p.num}</span>{shortName(p.name)}<span className="ft-res-pos">{CAT_SHORT[p.cat] || p.cat}</span>
               </div>
             ))}
           </div>
@@ -1953,7 +1959,7 @@ function FaisTonMercato() {
                 {searchResults.map((r) => (
                   <div key={r.id} className="ft-search-result" onClick={() => pickSearchResult(r)}>
                     {r.photo ? <img className="ft-row-photo" src={r.photo} alt="" /> : <div className="ft-row-num">{POS_MAP[r.position] || r.position || "?"}</div>}
-                    <div><div className="ft-row-name">{r.flagCode && <img src={`https://flagcdn.com/w20/${r.flagCode}.png`} alt="" style={{ width: 14, marginRight: 5, verticalAlign: "middle" }} />}{r.name}</div><div className="ft-row-sub">{r.team || "club inconnu"} · {CAT_LABEL[POS_MAP[r.position] || r.position] || r.position || "poste inconnu"}{r.subPos ? ` · ${r.subPos}` : ""} · {r.age ? `${r.age} ans` : ""}{r.nationality ? ` · ${r.nationality}` : ""}</div></div>
+                    <div><div className="ft-row-name">{r.flagCode && <img src={`https://flagcdn.com/w20/${r.flagCode}.png`} alt="" style={{ width: 14, marginRight: 5, verticalAlign: "middle" }} />}{r.name}</div><div className="ft-row-sub">{r.team || "club inconnu"} · {CAT_LABEL[POS_MAP[r.position] || r.position] || r.position || "poste inconnu"} · {r.age ? `${r.age} ans` : ""}{r.nationality ? ` · ${r.nationality}` : ""}</div></div>
                   </div>
                 ))}
               </div>
@@ -2236,9 +2242,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(<FaisTonMercato />);
   .ft-jersey-textured { background-image: radial-gradient(var(--tex) 1px, transparent 1.4px) !important;
     background-size: 5px 5px; background-position: 0 0, 2px 2px; }
   .ft-jersey-collar { position:absolute; top:0; left:38%; width:24%; height:16%; clip-path:polygon(0 0,100% 0,60% 100%,40% 100%); }
-  .ft-understudy-select { position:absolute; transform:translateX(-50%); max-width:78px; font-family:'IBM Plex Mono',monospace;
-    font-size:8px; background:rgba(10,14,18,0.55); color:var(--muted); border:1px solid var(--line); border-radius:5px;
-    padding:1px 3px; text-align:center; z-index:2; }
+  .ft-understudy-select { position:absolute; transform:translateX(-50%); max-width:70px; font-family:'IBM Plex Mono',monospace;
+    font-size:7px; line-height:1; background:rgba(10,14,18,0.6); color:var(--muted); border:1px solid var(--line); border-radius:4px;
+    padding:1px 2px; text-align:center; z-index:2; }
   .ft-jersey-num { position:relative; z-index:2; font-family:'Anton',sans-serif; font-size:12px; color:#0B2545; }
   .ft-jersey-empty { background:transparent; border:1.5px dashed rgba(244,247,241,0.4); }
   .ft-jersey-empty .ft-jersey-num { color:var(--muted); }
